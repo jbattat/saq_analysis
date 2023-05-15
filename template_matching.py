@@ -30,52 +30,8 @@ area =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
 file = open('long_scan/list.txt')
 names = file.readlines()
 
-v300_names = []
 v400_names = []
 #### Load data into the file
-"""
-for x,filename in enumerate(names):
-    if x%2 == 0:
-        field = 300
-        pressure = int(200 + (x/2)*50)
-        var_name ='p' + str(pressure) + '_v' + str(field)
-        temp = pd.read_csv(f'pressure_scan/{filename[:19]}_data.csv')
-        locals()[var_name] = temp
-        v300_names.append(locals()[var_name])
-    else:
-        field = 400
-        pressure = int(200 + ((x-1)/2)*50)
-        var_name ='p' + str(pressure) + '_v' + str(field)
-        temp = pd.read_csv(f'pressure_scan/{filename[:19]}_data.csv')
-        locals()[var_name] = temp
-        v400_names.append(locals()[var_name])
-number = len(v300_names) + len(v400_names)
-data = np.zeros([16, number])
-sigma = np.zeros([16, number])
-
-for x, names in enumerate(v300_names):
-    data[:,(x*2)] = names.iloc[:,1]*4000000/names.iloc[1:,2].sum()
-    sigma[:,(x*2)] = names.iloc[1:,2].sum()
-    scale = str(1 -  x/15)
-    plt.plot(midpoint[1:], data[1:,(x*2)], label = 'Pressure: ' + str(200 + x*50) + ', Drift Field: 300 V', color = scale)
-plt.xlim(0,20)
-plt.legend()
-plt.savefig("Drift_Field_300.pdf")
-plt.clf()
-
-for x, names in enumerate(v400_names):
-    data[:,(x*2)+1] = names.iloc[:,1]/names.iloc[1:,2].sum()
-    scale = str(1 - x/15)
-    sigma[:,(x*2)+1] = names.iloc[1:,2].sum()
-    plt.plot(midpoint[1:], data[1:,(x*2)+1], label = 'Pressure: ' + str(200 + x*50) + ', Drift Field: 400 V', color = scale)
-plt.xlim(0,20)
-plt.legend()
-plt.savefig("Drift_Field_400.pdf")
-plt.clf()
-sigma = np.sqrt(sigma)
-"""
-
-v400_names = []
 for x,filename in enumerate(names):
     field = 400
     pressure = int(200 + (x*50))
@@ -96,7 +52,6 @@ plt.xlim(0,20)
 plt.legend()
 plt.savefig("Drift_Field_400.pdf")
 plt.clf()
-
 sigma = np.sqrt(sigma)
 
 def cost(data, model, sigma):
@@ -148,11 +103,11 @@ def course_match(raw, sigma_x, mu_x, sigma):
 #            irow = jj % len(mux)
 #            icol = ii % len(sigx)
             num = jj + ii*7
-            A = sum(integral[num][2:14]*raw[2:14])/sum(raw[2:14]**2)
+            A = sum(integral[num][1:]*raw[1:])/sum(raw[1:]**2)
             raw = raw*A
             a_list.append(A)
-            chi.append(cost(raw[2:7], integral[num][2:7], sigma[2:7]))
-            print(chi_squared(raw[2:14], integral[num][2:14], sigma[2:14]))
+            chi.append(cost(raw[1:14], integral[num][1:14], sigma[1:14]))
+            #print(chi_squared(raw[1:14], integral[num][1:14], sigma[1:14]))
     fit = np.array(chi).argmin()
     scaling  = a_list[fit]
     sigma_value = int(fit / len(mu_x))
@@ -168,7 +123,7 @@ for n in range(len(names)):
 
     parameters = course_match(data[:,n], sigma_x, mu_x, sigma[:,n])
  
-    print(parameters)
+    #print(parameters)
     sigma_2 = np.linspace(parameters[0] - 0.5, parameters[0] + 1, 4)
     mu_2 = np.linspace(parameters[1] - 1, parameters[1] + 1, 4)
     final_fit = course_match(data[:,n],sigma_2, mu_2, sigma[:,n])
@@ -185,10 +140,10 @@ for n in range(len(names)):
   #  print(ll)
      
 
-    plt.plot(midpoint[2:], ll[2:]/max(ll[2:]), 'bo', label = 'model')
+    plt.plot(midpoint[1:], ll[1:]/max(ll[1:]), 'bo', label = 'model')
     #plt.plot(gg)
-    y_error = sigma[2:,n]
-    plt.plot(midpoint[2:], data[2:,n]/max(data[2:,n]), 'ko', label = 'data')
+    y_error = sigma[1:,n]
+    plt.plot(midpoint[1:], data_2[1:,n]/max(data_2[1:,n]), 'ko', label = 'data')
     #plt.errorbar(midpoint[2:], data[2:,n],
 #             yerr = y_error,
 #             fmt ='o')
