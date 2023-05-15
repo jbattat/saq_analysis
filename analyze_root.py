@@ -1,3 +1,6 @@
+# robust fileroot determination
+# run from any directory, save outputs to dir that has .root file
+
 import ROOT
 import sys
 import csv
@@ -9,7 +12,8 @@ import struct
 from array import array
 from ROOT import TCanvas
 
-from SAQ_DAQ import N_SAQ_CHANNELS
+#from SAQ_DAQ import N_SAQ_CHANNELS
+import saq
 from scipy.optimize import curve_fit
 
 ###########################################################################
@@ -62,6 +66,9 @@ rdf = ROOT.RDataFrame("tt", input_file)
 data = rdf.AsNumpy()
 #print("Number of Resets: ", len(data["Timestamp"]))
 
+#print(data)
+#print(type(data))
+
 ts = data["Timestamp"]
 masks = data["ChMask"]
 
@@ -95,8 +102,8 @@ total_run = ts[-1]
 ###########################################################################
 
 # create a list of the channels and all of their resets
-chResets = [[t for t, mask in zip(ts, masks) if m(ch, mask)] for ch in range(N_SAQ_CHANNELS)]
-channel_dist = np.zeros(16)
+chResets = [[t for t, mask in zip(ts, masks) if m(ch, mask)] for ch in range(saq.N_SAQ_CHANNELS)]
+channel_dist = np.zeros(saq.N_SAQ_CHANNELS)
 
 #average the number of resets by the area of the ring
 for ch, resets in enumerate(chResets):
@@ -119,6 +126,7 @@ plt.xlabel("Distance from center (mm)")
 plt.ylabel("Number of resets per channel averaged over area")
 plt.title("Distribution of resets")
 plt.savefig(str(input_file[:19]) + "_dist.pdf")
+plt.clf()
 #plt.show()
 
 ###########################################################################
