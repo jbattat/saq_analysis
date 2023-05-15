@@ -27,7 +27,7 @@ area =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
        2.28456618e+01, 2.87737686e+01, 3.57614560e+01, 6.37454282e+01,
        7.80786305e+01, 1.62677290e+02, 4.33812869e+02, 5.90985650e+02,
        7.52725600e+02, 9.16727496e+02, 2.27871834e+03, 2.86466762e+03])
-file = open('long_scan/list.txt')
+file = open('760_over_time/list.txt')
 names = file.readlines()
 
 v400_names = []
@@ -36,7 +36,7 @@ for x,filename in enumerate(names):
     field = 400
     pressure = int(200 + (x*50))
     var_name ='p' + str(pressure) + '_v' + str(field)
-    temp = pd.read_csv(f'long_scan/{filename[:19]}_data.csv')
+    temp = pd.read_csv(f'760_over_time/{filename[:19]}_data.csv')
     locals()[var_name] = temp
     v400_names.append(locals()[var_name])
 number = len(names)
@@ -143,7 +143,7 @@ for n in range(len(names)):
     plt.plot(midpoint[1:], ll[1:]/max(ll[1:]), 'bo', label = 'model')
     #plt.plot(gg)
     y_error = sigma[1:,n]
-    plt.plot(midpoint[1:], data_2[1:,n]/max(data_2[1:,n]), 'ko', label = 'data')
+    plt.plot(midpoint[1:], data[1:,n]/max(data[1:,n]), 'ko', label = 'data')
     #plt.errorbar(midpoint[2:], data[2:,n],
 #             yerr = y_error,
 #             fmt ='o')
