@@ -20,3 +20,38 @@ def files_from_list(flist):
     #print(files)
     return files
 
+
+##############################################################
+# Compute the area of each annular ring on the anode
+# The code below was used to generate the hard-coded "area" numbers above
+
+##width is the dimension of the electrode and spacing is the distance between them 
+#width = np.array([0.51, 0.64, 0.64, 0.82, 0.94, 0.94, 0.96, 1.42, 1.42, 2.42, 4.825, 4.825, 4.83, 4.83, 9.65, 9.65])
+#spacing = np.array([0, 0.26, 0.125, 0.06, 0.08, 0.06, 0.05, 0.06, 0.06, 0.08, 0.09, 0.09, 0.17, 0.17, 0.24, 0.36, 0])
+#inner_radii = np.zeros(N_SAQ_CHANNELS)
+#outer_radii = np.zeros(N_SAQ_CHANNELS)
+#area = np.zeros(N_SAQ_CHANNELS)
+#middle_gap = np.zeros(N_SAQ_CHANNELS)
+#sum_r = 0
+#inner = 0
+#
+##turn the widths and spacings into an inner and outer radii
+#for x in range(len(width)):
+#    inner_radii[x] = sum_r + spacing[x]
+#    outer_radii[x] = inner_radii[x] + width[x]
+#    middle_gap[x] = outer_radii[x] + spacing[x+1]/2
+#    sum_r = sum_r + width[x] + spacing[x]
+#    
+#
+##calculate the mid_point of each ring
+#mid_point =  (inner_radii + outer_radii)/2
+#print(repr(mid_point))
+##calculate the area of each ring
+#for x in range(N_SAQ_CHANNELS):
+#    if x != 0:
+#        area[x] = (middle_gap[x]**2 - middle_gap[x-1]**2)*np.pi
+#    else:
+#        area[x] = np.pi*middle_gap[x]**2
+##area = (outer_radii**2 - inner_radii**2)*np.pi
+##print(area)
+

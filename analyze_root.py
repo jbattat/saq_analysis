@@ -12,48 +12,18 @@ import struct
 from array import array
 from ROOT import TCanvas
 
-#from SAQ_DAQ import N_SAQ_CHANNELS
 import saq
 from scipy.optimize import curve_fit
 
 ###########################################################################
 #################### calculate the widths of the anodes ###################
 ###########################################################################
+area = saq.area[:]
+midpoint = saq.midpoint[:]
 
-#width is the dimension of the electrode and spacing is the distance between them 
-width = np.array([0.51, 0.64, 0.64, 0.82, 0.94, 0.94, 0.96, 1.42, 1.42, 2.42, 4.825, 4.825, 4.83, 4.83, 9.65, 9.65])
-spacing = np.array([0, 0.26, 0.125, 0.06, 0.08, 0.06, 0.05, 0.06, 0.06, 0.08, 0.09, 0.09, 0.17, 0.17, 0.24, 0.36, 0])
-inner_radii = np.zeros(16)
-outer_radii = np.zeros(16)
-area = np.zeros(16)
-middle_gap = np.zeros(16)
-sum_r = 0
-inner = 0
-save_data = np.zeros((16, 3))
+save_data = np.zeros((saq.N_SAQ_CHANNELS, 3))
+save_data[:,0] = np.arange(saq.N_SAQ_CHANNELS)+1  # channel numbers 1-16
 
-
-channels = np.arange(1, 17)
-save_data[:,0] =  channels
-
-#turn the widths and spacings into an inner and outer radii
-for x in range(len(width)):
-    inner_radii[x] = sum_r + spacing[x]
-    outer_radii[x] = inner_radii[x] + width[x]
-    middle_gap[x] = outer_radii[x] + spacing[x+1]/2
-    sum_r = sum_r + width[x] + spacing[x]
-    
-
-#calculate the mid_point of each ring
-mid_point =  (inner_radii + outer_radii)/2
-print(repr(mid_point))
-#calculate the area of each ring
-for x in range(16):
-    if x != 0:
-        area[x] = (middle_gap[x]**2 - middle_gap[x-1]**2)*np.pi
-    else:
-        area[x] = np.pi*middle_gap[x]**2
-#area = (outer_radii**2 - inner_radii**2)*np.pi
-#print(area)
 ###########################################################################
 ################# import the data from the ROOT file ######################
 ###########################################################################
@@ -120,12 +90,13 @@ dark = [1.,0.23290509, 0.15205463, 0.17366971, 0.05632563, 0.04472116,
 #print("# of resets per channel - averaged", repr(channel_dist))
 
 #print(channel_dist)
-plt.plot(mid_point, channel_dist, 'o')
+plt.plot(midpoint, channel_dist, 'o')
 plt.xlim(0, 20)
 plt.xlabel("Distance from center (mm)")
 plt.ylabel("Number of resets per channel averaged over area")
 plt.title("Distribution of resets")
-plt.savefig(str(input_file[:19]) + "_dist.pdf")
+outfile = input_file.replace('.root', '_dist.pdf')
+plt.savefig(outfile)
 plt.clf()
 #plt.show()
 
@@ -136,15 +107,15 @@ plt.clf()
 def func(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
-#mean = sum(mid_point[4:]*channel_dist[4:])/sum(channel_dist[4:])
-mean = sum(mid_point*channel_dist)/sum(channel_dist)                  
-#sigma = sum(channel_dist[4:]*(mid_point[4:]-mean**2)/sum(channel_dist[4:]))
+#mean = sum(midpoint[4:]*channel_dist[4:])/sum(channel_dist[4:])
+mean = sum(midpoint*channel_dist)/sum(channel_dist)                  
+#sigma = sum(channel_dist[4:]*(midpoint[4:]-mean**2)/sum(channel_dist[4:]))
 #print(sigma)
-sigma = sum(channel_dist*(mid_point-mean)**2)/sum(channel_dist)
-popt, pcov = curve_fit(func, mid_point, channel_dist, p0=[max(channel_dist),mean,sigma])
-#popt, pcov = curve_fit(func, mid_point[4:], channel_dist[4:], p0=[max(channel_dist),mean,1.5])
+sigma = sum(channel_dist*(midpoint-mean)**2)/sum(channel_dist)
+popt, pcov = curve_fit(func, midpoint, channel_dist, p0=[max(channel_dist),mean,sigma])
+#popt, pcov = curve_fit(func, midpoint[4:], channel_dist[4:], p0=[max(channel_dist),mean,1.5])
 print(popt)
-plt.plot(mid_point, channel_dist, 'o', label = 'data')
+plt.plot(midpoint, channel_dist, 'o', label = 'data')
 xm = np.linspace(0, 15, 100)
 ym = func(xm, popt[0], popt[1], popt[2])
 plt.plot(xm, ym, c='r', label = 'model')
@@ -152,7 +123,8 @@ plt.xlabel("Distance from center (mm)")
 plt.ylabel("Number of resets averaged over annulus area")
 plt.xlim(0, 15)
 plt.legend()
-plt.savefig(str(input_file[:19]) + "_model.pdf")
+outfile = input_file.replace('.root', '_model.pdf')
+plt.savefig(outfile)
 #plt.show()
 """
 ###########################################################################
@@ -193,7 +165,8 @@ plt.title("Reconstructed Current")
 plt.xlabel("Time (s)")
 plt.ylabel("Current (nA)")
 plt.legend()
-plt.savefig(str(input_file[:19]) + "_current.pdf")
+outfile = input_file.replace('.root', '_current.pdf')
+plt.savefig(outfile)
 #plt.show()
 
 ###########################################################################
@@ -202,7 +175,8 @@ plt.savefig(str(input_file[:19]) + "_current.pdf")
 
 header = ["SAQ_Channel_Numbers", "Resets_Averaged_by_Area", "Raw_Number_of_Resets"]
 
-with open(str(input_file[:19]) + "_data.csv", 'w', encoding='UTF8', newline='') as f:
+outfile = input_file.replace('.root', '_data.csv')
+with open(outfile, 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
 
     # write the header
