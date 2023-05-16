@@ -17,11 +17,13 @@ Steps as outlined by James
 4. do a course matching (I think using chi**2)
 5. do a finer matching (I think using chi**2)
 """
-integral  = pickle.load(open('./test.pkl', 'rb'))
-#gauss = pickle.load(open('./test.pkl', 'rb'))
-print(sum(integral[0]))
-print("integrals: ", integral[2])
-#print("gaussians: ", gauss[0])
+integral  = pd.DataFrame(pickle.load(open('../template_2.pkl', 'rb')))
+sigma_x   = integral.diffusion.unique()
+mu_x      = integral.offset.unique()
+integral_ind  = integral.set_index(['diffusion', 'offset'])
+
+
+
 
 midpoint = saq.midpoint[:]
 area = saq.area[:]
@@ -50,8 +52,8 @@ print(names)
 
 #### Load data into the file
 number = len(names)
-data = np.zeros([16, number])
-sigma = np.zeros([16, number])
+data = np.zeros([saq.N_SAQ_CHANNELS, number])
+sigma = np.zeros([saq.N_SAQ_CHANNELS, number])
 for x,filename in enumerate(names):
     field = 400
     pressure = int(200 + (x*50))
@@ -63,9 +65,10 @@ for x,filename in enumerate(names):
     #locals()[var_name] = temp
     #v400_names.append(locals()[var_name])
     data[:,x] = resetperarea[:]
-    sigma[:,x] = np.sqrt(reset[:])
+    sigma[:,x] = np.sqrt(reset[:])/area
     scale = str(1 -  x/15)
     plt.plot(midpoint[1:], data[1:,x], label = 'Pressure: ' + str(200 + x*50) + ', Drift Field: 400 V', color = scale)
+
 plt.xlim(0,20)
 plt.legend()
 plt.savefig("Drift_Field_400.pdf")
@@ -115,48 +118,53 @@ def chi_squared(data, model, sigma):
 #
 #    return(masks, gg, area)
 
-
+print(data[:,2])
 def course_match(raw, sigma_x, mu_x, sigma):
     area = saq.area[:]
     nn = saq.N_SAQ_CHANNELS
     chi = []
-    sigma = sigma/area
     a_list = []
     
     for ii, diff in enumerate(sigma_x):
         for jj, offset in enumerate(mu_x):
 #            irow = jj % len(mux)
 #            icol = ii % len(sigx)
-            num = jj + ii*7
-            A = sum(integral[num][1:]*raw[1:])/sum(raw[1:]**2)
+            template = integral_ind.loc[diff, offset]
+            A = sum(template[0][1:])/sum(raw[1:])
+            #A = sum((template[0][1:14]*raw[1:14])/(sigma[1:14]**2))/sum((raw[1:14]**2)/(sigma[1:14]**2))
             raw = raw*A
             a_list.append(A)
-            chi.append(chi_squared(raw[1:14], integral[num][1:14], sigma[1:14]))
+            chi.append(chi_squared(raw[1:9], template[0][1:9], sigma[1:9]))
             #chi.append(cost(raw[1:14], integral[num][1:14], sigma[1:14]))
             #print(chi_squared(raw[1:14], integral[num][1:14], sigma[1:14]))
     fit = np.array(chi).argmin()
     scaling  = a_list[fit]
-    sigma_value = int(fit / len(mu_x))
-    mu_value    = int(fit % len(mu_x))
-    
-    return(sigma_x[sigma_value], mu_x[mu_value], fit, sigma, scaling)
+    return(fit, integral.diffusion[fit], integral.offset[fit], scaling)
 
+example = integral.template[10]*50
+sigma_ex = np.sqrt(integral.template[10])/area
+print(sigma_ex)
+#plt.plot(midpoint, integral.template[10])
+noise = np.random.normal(0, .1, example.shape)
+example = example + noise
+parameter_ex = course_match(example, sigma_x, mu_x, sigma_ex)
+
+print(parameter_ex)
+plt.plot(midpoint, integral_ind.loc[parameter_ex[1], parameter_ex[2]][0], 'bo')
+plt.plot(midpoint, example*parameter_ex[3], 'ko')
+plt.show()
+"""
 for n in range(len(names)):
- 
-    sigma_x = np.linspace(1, 5, 20)
-
-    mu_x    = np.linspace(0, 7, 20)
-
     parameters = course_match(data[:,n], sigma_x, mu_x, sigma[:,n])
- 
-    #print(parameters)
+
+    print(parameters)
     #sigma_2 = np.linspace(parameters[0] - 0.5, parameters[0] + 1, 4)
     #mu_2 = np.linspace(parameters[1] - 1, parameters[1] + 1, 4)
     #final_fit = course_match(data[:,n],sigma_2, mu_2, sigma[:,n])
     #print(final_fit)
+    ll = integral_ind.loc[parameters[1], parameters[2]]
+    print(ll)
 
-    ll = integral[parameters[2]][:]
-    
     #ll = np.zeros(16)
     #masks, gg, area  = make_gaussian(parameters[0], parameters[1])
     #for kk in range(16):
@@ -166,11 +174,13 @@ for n in range(len(names)):
     #ll = ll/area
     #ll = ll/sum(ll)
   #  print(ll)
-     
-    plt.plot(midpoint[1:], ll[1:]/max(ll[1:]), 'bo', label = 'model')
+
+    plt.plot(midpoint[1:], ll[0][1:], 'bo', label = 'model')
     #plt.plot(gg)
     y_error = sigma[1:,n]
-    plt.plot(midpoint[1:], data[1:,n]/max(data[1:,n]), 'ko', label = 'data')
+
+    #plt.plot(midpoint[1:], data[1:,n]/max(data[1:,n]), 'ko', label = 'data')
+    plt.plot(midpoint[1:], data[1:,n]*0.1, 'ko', label = 'data')
     #plt.errorbar(midpoint[2:], data[2:,n],
 #             yerr = y_error,
 #             fmt ='o')
@@ -178,4 +188,4 @@ for n in range(len(names)):
     plt.legend()
     plt.show()
 
-
+"""
