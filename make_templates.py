@@ -37,18 +37,19 @@ def make_gaussian(sigx, mux):
 
     
 nn = 16
-sigma_x = np.linspace(1, 5, 20)
+sigma_x = np.arange(0.2, 5.1, 0.1)
 print(sigma_x)
-mu_x    = np.linspace(0, 7, 20)
+mu_x    = np.arange(0, 7.2, 0.2)
 print(mu_x)
-gauss_templates = []
+
 int_templates = []
+#int_dict = {"Sigma_x": sigma_x, "mu_x": mu_x}
 for ii, diff in enumerate(sigma_x):
     for jj, offset in enumerate(mu_x):
         ll = []
         masks, gg, area = make_gaussian(diff, offset)
-        gauss_templates.append(gg)
-
+        label = str(diff)+ "_" + str(offset)
+        int_dict = {"diffusion": diff, "offset": offset}
         #determine which subplot to graph on 
         #            irow = jj % len(mux)
         #            icol = ii % len(sigx)
@@ -59,10 +60,11 @@ for ii, diff in enumerate(sigma_x):
             
             #normalize based on area of ring
         ll = ll/area
-        ll = ll/sum(ll)
-        int_templates.append(ll)
+
+        int_dict.update({"template": ll})
+        int_templates.append(int_dict)
         int_name = str(diff) + "_" + str(offset) + "_int"
-pickle.dump(int_templates, open('test.pkl', 'wb'))
+pickle.dump(int_templates, open('template_50.pkl', 'wb'))
 #pickle.dump(gauss_templates, open('test.pkl', 'wb'))
 print("pickled") 
 
