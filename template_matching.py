@@ -8,20 +8,14 @@ import sys
 import saq
 
 from offset_simulation import compute_masks
-"""
-Steps as outlined by James
-1. import the data and graph it
-2. normalize it
-  a. I think he said the easy way would be to normalize it based on the number of resets
-3. generate a wide variety of offsets and diffusion widths
-4. do a course matching (I think using chi**2)
-5. do a finer matching (I think using chi**2)
-"""
-integral  = pd.DataFrame(pickle.load(open('../template_2.pkl', 'rb')))
+
+
+integral  = pd.DataFrame(pickle.load(open('../template_20.pkl', 'rb')))
 sigma_x   = integral.diffusion.unique()
 mu_x      = integral.offset.unique()
 integral_ind  = integral.set_index(['diffusion', 'offset'])
-
+print(sigma_x)
+print(mu_x)
 
 
 
@@ -118,29 +112,31 @@ def chi_squared(data, model, sigma):
 #
 #    return(masks, gg, area)
 
-print(data[:,2])
+
 def course_match(raw, sigma_x, mu_x, sigma):
     area = saq.area[:]
     nn = saq.N_SAQ_CHANNELS
     chi = []
     a_list = []
-    
     for ii, diff in enumerate(sigma_x):
         for jj, offset in enumerate(mu_x):
 #            irow = jj % len(mux)
 #            icol = ii % len(sigx)
             template = integral_ind.loc[diff, offset]
-            A = sum(template[0][1:])/sum(raw[1:])
-            #A = sum((template[0][1:14]*raw[1:14])/(sigma[1:14]**2))/sum((raw[1:14]**2)/(sigma[1:14]**2))
-            raw = raw*A
+            #A = sum(template[0][1:])/sum(raw[1:])
+            A = sum((template[0][1:14]*raw[1:14])/(sigma[1:14]**2))/sum((raw[1:14]**2)/(sigma[1:14]**2))
+            raw_norm  = raw[:]*A
             a_list.append(A)
-            chi.append(chi_squared(raw[1:9], template[0][1:9], sigma[1:9]))
+            chi.append(chi_squared(raw_norm[1:9], template[0][1:9], sigma[1:9]))
             #chi.append(cost(raw[1:14], integral[num][1:14], sigma[1:14]))
             #print(chi_squared(raw[1:14], integral[num][1:14], sigma[1:14]))
     fit = np.array(chi).argmin()
+#    plt.imshow(chi, cmap = 'gray')
+#    plt.show()
+#    print(chi)
     scaling  = a_list[fit]
     return(fit, integral.diffusion[fit], integral.offset[fit], scaling)
-
+"""
 example = integral.template[10]*50
 sigma_ex = np.sqrt(integral.template[10])/area
 print(sigma_ex)
@@ -155,6 +151,7 @@ plt.plot(midpoint, example*parameter_ex[3], 'ko')
 plt.show()
 """
 for n in range(len(names)):
+
     parameters = course_match(data[:,n], sigma_x, mu_x, sigma[:,n])
 
     print(parameters)
@@ -163,7 +160,7 @@ for n in range(len(names)):
     #final_fit = course_match(data[:,n],sigma_2, mu_2, sigma[:,n])
     #print(final_fit)
     ll = integral_ind.loc[parameters[1], parameters[2]]
-    print(ll)
+ 
 
     #ll = np.zeros(16)
     #masks, gg, area  = make_gaussian(parameters[0], parameters[1])
@@ -173,19 +170,21 @@ for n in range(len(names)):
     #    #normalize based on area of ring
     #ll = ll/area
     #ll = ll/sum(ll)
-  #  print(ll)
-
-    plt.plot(midpoint[1:], ll[0][1:], 'bo', label = 'model')
+    #print(ll)
+    scale = 1/parameters[3]
+    plt.plot(midpoint[1:], ll[0][1:]*scale, 'bo', label = 'model')
     #plt.plot(gg)
     y_error = sigma[1:,n]
-
+    sigma[1:5,] = sigma[1:5,]*10
     #plt.plot(midpoint[1:], data[1:,n]/max(data[1:,n]), 'ko', label = 'data')
-    plt.plot(midpoint[1:], data[1:,n]*0.1, 'ko', label = 'data')
+    plt.errorbar(midpoint[1:], data[1:,n], yerr = sigma[1:,n], fmt = 'ko', label = 'data')
     #plt.errorbar(midpoint[2:], data[2:,n],
 #             yerr = y_error,
 #             fmt ='o')
     plt.xlim(0, 20)
+    plt.ylabel("Resets per mm^2")
+    plt.xlabel("Radial distance (mm)")
     plt.legend()
     plt.show()
 
-"""
+
