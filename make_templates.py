@@ -32,14 +32,15 @@ def make_gaussian(sigx, mux):
     norm = 1
     #norm = 1/(2.0*np.pi *sigma**2)
     gg = np.exp( -(xx-mux)**2/(2*sigx**2) - (yy-muy)**2/(2*sigy**2) )
-
     return(masks, gg, area)
 
     
 nn = 16
-sigma_x = np.arange(0.2, 5.1, 0.1)
+#sigma_x = np.linspace(1, 5, 7)
+#mu_x    = np.linspace(0, 7, 7)
+sigma_x = np.arange(0.2, 5.1, 0.01)
 print(sigma_x)
-mu_x    = np.arange(0, 7.2, 0.2)
+mu_x    = np.arange(0, 7.2, 0.01)
 print(mu_x)
 
 int_templates = []
@@ -60,11 +61,13 @@ for ii, diff in enumerate(sigma_x):
             
             #normalize based on area of ring
         ll = ll/area
-
+        print(sum(ll))
+        ll = ll/sum(ll)
+        print(sum(ll))
         int_dict.update({"template": ll})
         int_templates.append(int_dict)
         int_name = str(diff) + "_" + str(offset) + "_int"
-pickle.dump(int_templates, open('template_50.pkl', 'wb'))
+pickle.dump(int_templates, open('template_100.pkl', 'wb'))
 #pickle.dump(gauss_templates, open('test.pkl', 'wb'))
 print("pickled") 
 

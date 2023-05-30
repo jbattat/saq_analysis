@@ -1,3 +1,5 @@
+import numpy as np
+
 N_SAQ_CHANNELS = 16
 
 area =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
@@ -20,7 +22,33 @@ def files_from_list(flist):
     #print(files)
     return files
 
+def convert_time(time):
+    clock_rate = 30.3e6 #the frequency of the zybo board
+    n = 0 #number of loops through the clock
 
+    time_sec = np.zeros(len(time))
+    #Convert the individual entries to show the time in seconds
+    for i in range(len(time)):
+        cutoff = (2**32)-1 #the value at which the zybo's clock resets back to zero
+        loop_value = (cutoff)/clock_rate #the number of seconds it takes to go through one loop
+        time_sec[i] = time[i]/clock_rate + (n*loop_value) #the actual conversion 
+        #add a count to the number of loops if the time has reset and fix that value
+        if (int(time[i]) - int(time[i-1])) < 0 and i !=0:
+            n+=1
+            time_sec[i] = float(time[i]/clock_rate) + float(n*loop_value) #the actual conversio
+    return time_sec
+
+def calculate_rtd(resets):
+    #calculate the time between resets for each channel
+    rtd = np.zeros(len(resets)) 
+    hold = 0
+
+    for r in range(len(resets)-1):
+        prev   = resets[r+1]
+        curr   = resets[r]
+        temp   = prev - curr
+        rtd[r] = temp
+    return rtd
 ##############################################################
 # Compute the area of each annular ring on the anode
 # The code below was used to generate the hard-coded "area" numbers above
