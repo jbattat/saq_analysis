@@ -9,7 +9,7 @@ midpoint = saq.midpoint
 area     = saq.area
 
 resetdata = sys.argv[1]
-integral  = pd.DataFrame(pickle.load(open('./template_20.pkl', 'rb')))
+integral  = pd.DataFrame(pickle.load(open('../template_50.pkl', 'rb')))
 chan, resetperarea, reset = np.loadtxt(resetdata, unpack=True, skiprows=1, delimiter=',')
 
 diffusion  = float(input("Enter a diffusion between 0 and 5:"))
