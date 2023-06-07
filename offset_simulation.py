@@ -23,6 +23,51 @@ ymax = xmax
 nx = 2000
 ny = 2000
 
+def make_gaussian(xx, yy, sigx, mux, theta, phi):
+    # theta [degrees]  is angle from the normal to the cathode
+    # theta=0 gives symmetric gaussian
+    # phi [deg.] angle of fiber in the cathode plane
+    # phi=0 points to ... =pi/2 points to...
+    
+    sigy = sigx/np.cos(theta*np.pi/180.)
+    muy = 0  # mm
+
+    # see e.g. astropy documentation
+    # https://docs.astropy.org/en/stable/api/astropy.modeling.functional_models.Gaussian2D.html
+    cpsq = np.cos(phi*np.pi/180.)**2 # cos squared
+    spsq = np.sin(phi*np.pi/180.)**2 # sin squared
+    s2p  = np.sin(2*phi*np.pi/180.)  # sin 2phi
+    a = 0.5*cpsq/sigx**2 + 0.5*spsq/sigy**2
+    b = 0.5*s2p/sigx**2 - 0.5*s2p/sigy**2
+    c = 0.5*spsq/sigx**2 + 0.5*cpsq/sigy**2
+    
+    norm = 1
+    #norm = 1/(2.0*np.pi *sigma**2)
+    #gg = norm*np.exp( -(xx-mux)**2/(2*sigx**2) - (yy-muy)**2/(2*sigy**2) )
+    gg = norm*np.exp( -a*(xx-mux)**2 - b*(xx-mux)*(yy-muy) -c*(yy-muy)**2 )
+    return gg
+
+def compute_masks2(xx, yy):
+    nx = len(xx)
+    ny = len(yy)
+    annuli = [ [ 0, 0.64], [ 0.64, 1.4775], [ 1.4775, 2.205], [ 2.205, 3.095],
+               [ 3.095, 4.105], [ 4.105, 5.1], [ 5.1, 6.115], [ 6.115, 7.595],
+               [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
+               [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275]
+               ]
+    masks = {}
+    distSq = xx**2 + yy**2
+
+    chans = np.arange(16)
+    for ii, chan in enumerate(chans):
+        masks[chan] = np.zeros((ny, nx), dtype=int)
+        rminSq = annuli[ii][0]**2
+        rmaxSq = annuli[ii][1]**2
+        ids = np.where( ((distSq >= rminSq) & (distSq < rmaxSq)) )
+        masks[chan][ids] = 1
+        
+    return masks
+
 def compute_masks(xx, yy):
     nx = len(xx)
     ny = len(yy)
@@ -44,6 +89,8 @@ def compute_masks(xx, yy):
     area = np.zeros(16)
     distSq = xx**2 + yy**2
     midpoint = np.zeros(16)
+    print(f"nx = {nx}")
+    print(f"ny = {ny}")
     for ii, chan in enumerate(chans):
         masks[chan] = np.zeros((ny, nx), dtype=int)
         rminSq = annuli[ii][0]**2
