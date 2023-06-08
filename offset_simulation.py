@@ -15,13 +15,53 @@ mux = [3.3, 3.3]
 #mux = [6, 6.8 , 7]
 muy = 0  # mm
 
-xmin = -10  # mm
-xmax = 10
+xmin = -50  # mm
+xmax = 50
 ymin = xmin
 ymax = xmax
 
 nx = 2000
 ny = 2000
+
+# Geometry of anode rings
+chans = np.arange(16)
+# min and max radii of each annulus
+annuli = [ [ 0, 0.64], [ 0.64, 1.4775], [ 1.4775, 2.205], [ 2.205, 3.095],
+           [ 3.095, 4.105], [ 4.105, 5.1], [ 5.1, 6.115], [ 6.115, 7.595],
+           [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
+           [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275]
+          ]
+
+def compute_areas():
+    areas = np.zeros(16)
+    for ii, chan in enumerate(chans):
+        areas[chan]   = (annuli[ii][1]**2 - annuli[ii][0]**2)*np.pi
+    return areas
+
+def compute_midpoints():
+    midpoints = np.zeros(16)
+    for ii in range(16):
+        #midpoints[ii] = (annuli[ii][1] - annuli[ii][0])/2 + annuli[ii][0]
+        midpoints[ii] = 0.5*(annuli[ii][1] + annuli[ii][0])
+    #print(f'midpoints = {midpoints}')
+    return midpoints
+
+def compute_masks2(xx, yy):
+    nx = len(xx)
+    ny = len(yy)
+    masks = {}
+    distSq = xx**2 + yy**2
+
+    for ii, chan in enumerate(chans):
+        #print(f"ii, chan = {ii}, {chan}")
+        masks[chan] = np.zeros((ny, nx), dtype=int)
+        rminSq = annuli[ii][0]**2
+        rmaxSq = annuli[ii][1]**2
+        #print(f"rmin, rmax = {np.sqrt(rminSq)}, {np.sqrt(rmaxSq)}")
+        ids = np.where( ((distSq >= rminSq) & (distSq < rmaxSq)) )
+        masks[chan][ids] = 1
+        
+    return masks
 
 def make_gaussian(xx, yy, sigx, mux, theta, phi):
     # theta [degrees]  is angle from the normal to the cathode
@@ -47,26 +87,6 @@ def make_gaussian(xx, yy, sigx, mux, theta, phi):
     gg = norm*np.exp( -a*(xx-mux)**2 - b*(xx-mux)*(yy-muy) -c*(yy-muy)**2 )
     return gg
 
-def compute_masks2(xx, yy):
-    nx = len(xx)
-    ny = len(yy)
-    annuli = [ [ 0, 0.64], [ 0.64, 1.4775], [ 1.4775, 2.205], [ 2.205, 3.095],
-               [ 3.095, 4.105], [ 4.105, 5.1], [ 5.1, 6.115], [ 6.115, 7.595],
-               [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
-               [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275]
-               ]
-    masks = {}
-    distSq = xx**2 + yy**2
-
-    chans = np.arange(16)
-    for ii, chan in enumerate(chans):
-        masks[chan] = np.zeros((ny, nx), dtype=int)
-        rminSq = annuli[ii][0]**2
-        rmaxSq = annuli[ii][1]**2
-        ids = np.where( ((distSq >= rminSq) & (distSq < rmaxSq)) )
-        masks[chan][ids] = 1
-        
-    return masks
 
 def compute_masks(xx, yy):
     nx = len(xx)
