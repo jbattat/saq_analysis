@@ -42,7 +42,7 @@ class MainWindow(qtw.QMainWindow):
         self.load_pressure_scan()
         
         # Default values
-        sigx0, mux0, theta0, phi0 = 3.0, 6.0, 65, 0
+        sigx0, mux0, theta0, phi0 = 1.9, 3.3, 65, 0
         
         # Initialize the data
         # Image plot
@@ -65,6 +65,7 @@ class MainWindow(qtw.QMainWindow):
 
             # One set of axes per pressure
             self.dataPlotAxes.append( self.dataPlots.addPlot(row=row, col=col) )
+            self.dataPlotAxes[-1].setTitle(self.pressures[ii])
             
             # Pressure scan data (points)
             self.dataPlotPoints.append( self.dataPlotAxes[-1].plot(self.chans[1:], self.pressure_scan_data[ii][1:],
@@ -93,24 +94,24 @@ class MainWindow(qtw.QMainWindow):
         # total diffusion
         self.slider_sigx_layout = qtw.QHBoxLayout()
         self.slider_sigx_label = qtw.QLabel("sigma x")
-        sigx_min, sigx_max, sigx_set = 0, 8, int(sigx0)
         self.sigx_factor = 10
+        sigx_min, sigx_max, sigx_set = 0, 8, sigx0  # physical units
         self.slider_sigx = qtw.QSlider(qtc.Qt.Horizontal, self)
-        self.slider_sigx.setMinimum(sigx_min*self.sigx_factor)
-        self.slider_sigx.setMaximum(sigx_max*self.sigx_factor)
-        self.slider_sigx.setValue(sigx_set*self.sigx_factor)
+        self.slider_sigx.setMinimum(int(sigx_min*self.sigx_factor)) # integer for slider
+        self.slider_sigx.setMaximum(int(sigx_max*self.sigx_factor)) # integer for slider
+        self.slider_sigx.setValue(int(sigx_set*self.sigx_factor)) # integer for slider
         self.slider_sigx_layout.addWidget(self.slider_sigx_label)
         self.slider_sigx_layout.addWidget(self.slider_sigx)
 
         # Offset
         self.slider_mux_layout = qtw.QHBoxLayout()
         self.slider_mux_label = qtw.QLabel("mu x")
-        mux_min, mux_max, mux_set = 0, int(xmax), int(mux0)
         self.mux_factor = 10
+        mux_min, mux_max, mux_set = 0, xmax, mux0 # physical units
         self.slider_mux = qtw.QSlider(qtc.Qt.Horizontal, self)
-        self.slider_mux.setMinimum(mux_min*self.mux_factor)
-        self.slider_mux.setMaximum(mux_max*self.mux_factor)
-        self.slider_mux.setValue(mux_set*self.mux_factor)
+        self.slider_mux.setMinimum(int(mux_min*self.mux_factor)) # integer for slider
+        self.slider_mux.setMaximum(int(mux_max*self.mux_factor)) # integer for slider
+        self.slider_mux.setValue(int(mux_set*self.mux_factor)) # integer for slider
         self.slider_mux_layout.addWidget(self.slider_mux_label)
         self.slider_mux_layout.addWidget(self.slider_mux)
         
@@ -203,7 +204,7 @@ class MainWindow(qtw.QMainWindow):
     def load_pressure_scan(self):
         #dirname = "/Users/jbattat/research/qpix/saq_analysis/data/pressure_scan/20230519/"
         fnames = [os.path.join(self.dirname, fn) for fn in self.fnames]
-        print(fnames)
+        #print(fnames)
 
         for ii in range(len(fnames)):
             junk1, rsts, junk2 = np.loadtxt(fnames[ii], delimiter=",", skiprows=1, unpack=True)
@@ -228,7 +229,7 @@ class MainWindow(qtw.QMainWindow):
         mux = self.slider_mux.value()/self.mux_factor
         theta = self.slider_theta.value()
         phi = self.slider_phi.value()
-        print(f'sigx, mux, theta, phi = {sigx}, {mux}, {theta}, {phi}')
+        #print(f'sigx, mux, theta, phi = {sigx}, {mux}, {theta}, {phi}')
         gg = diff.make_gaussian(self.xx, self.yy, sigx, mux, theta, phi)
         self.img.setImage(gg.T)
         self.line.setData(x=self.chans, y=self.integrateCharge(gg))
