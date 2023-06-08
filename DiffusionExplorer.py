@@ -91,43 +91,64 @@ class MainWindow(qtw.QMainWindow):
         # Controls
 
         # total diffusion
+        self.slider_sigx_layout = qtw.QHBoxLayout()
+        self.slider_sigx_label = qtw.QLabel("sigma x")
         sigx_min, sigx_max, sigx_set = 0, 8, int(sigx0)
+        self.sigx_factor = 10
         self.slider_sigx = qtw.QSlider(qtc.Qt.Horizontal, self)
-        self.slider_sigx.setMinimum(sigx_min)
-        self.slider_sigx.setMaximum(sigx_max)
-        self.slider_sigx.setValue(sigx_set)
+        self.slider_sigx.setMinimum(sigx_min*self.sigx_factor)
+        self.slider_sigx.setMaximum(sigx_max*self.sigx_factor)
+        self.slider_sigx.setValue(sigx_set*self.sigx_factor)
+        self.slider_sigx_layout.addWidget(self.slider_sigx_label)
+        self.slider_sigx_layout.addWidget(self.slider_sigx)
 
         # Offset
+        self.slider_mux_layout = qtw.QHBoxLayout()
+        self.slider_mux_label = qtw.QLabel("mu x")
         mux_min, mux_max, mux_set = 0, int(xmax), int(mux0)
+        self.mux_factor = 10
         self.slider_mux = qtw.QSlider(qtc.Qt.Horizontal, self)
-        self.slider_mux.setMinimum(mux_min)
-        self.slider_mux.setMaximum(mux_max)
-        self.slider_mux.setValue(mux_set)
+        self.slider_mux.setMinimum(mux_min*self.mux_factor)
+        self.slider_mux.setMaximum(mux_max*self.mux_factor)
+        self.slider_mux.setValue(mux_set*self.mux_factor)
+        self.slider_mux_layout.addWidget(self.slider_mux_label)
+        self.slider_mux_layout.addWidget(self.slider_mux)
         
         # Theta (angle wrt cathode normal)
+        self.slider_theta_layout = qtw.QHBoxLayout()
+        self.slider_theta_label = qtw.QLabel("theta")
         theta_min, theta_max, theta_set = 0, 85, int(theta0)
         self.slider_theta = qtw.QSlider(qtc.Qt.Horizontal, self)
         self.slider_theta.setMinimum(theta_min)
         self.slider_theta.setMaximum(theta_max)
         self.slider_theta.setValue(theta_set)
+        self.slider_theta_layout.addWidget(self.slider_theta_label)
+        self.slider_theta_layout.addWidget(self.slider_theta)
 
         # Phi (angle in plane of cathode)
+        self.slider_phi_layout = qtw.QHBoxLayout()
+        self.slider_phi_label = qtw.QLabel("phi")
         phi_min, phi_max, phi_set = -90, 90, int(phi0)
         self.slider_phi = qtw.QSlider(qtc.Qt.Horizontal, self)
         self.slider_phi.setMinimum(phi_min)
         self.slider_phi.setMaximum(phi_max)
         self.slider_phi.setValue(phi_set)
+        self.slider_phi_layout.addWidget(self.slider_phi_label)
+        self.slider_phi_layout.addWidget(self.slider_phi)
 
         # Layout
         self.layout = qtw.QVBoxLayout()
 
-        self.layoutControls = qtw.QVBoxLayout()
-        #self.controls = qtw.QWidget()
-        #self.controls.setLayout(qtw.QVBoxLayout())
-        self.layoutControls.addWidget(self.slider_sigx)
-        self.layoutControls.addWidget(self.slider_mux)
-        self.layoutControls.addWidget(self.slider_theta)
-        self.layoutControls.addWidget(self.slider_phi)
+        self.layoutControls = qtw.QGridLayout()
+        self.layoutControls.addLayout(self.slider_sigx_layout, 0, 0)
+        self.layoutControls.addLayout(self.slider_mux_layout, 1, 0)
+        self.layoutControls.addLayout(self.slider_theta_layout, 0, 1)
+        self.layoutControls.addLayout(self.slider_phi_layout, 1, 1)
+        #self.layoutControls.addWidget(self.slider_sigx, 0, 0)
+        #self.layoutControls.addWidget(self.slider_mux, 1, 0)
+        #self.layoutControls.addWidget(self.slider_theta, 0, 1)
+        #self.layoutControls.addWidget(self.slider_phi, 1, 1)
+
         self.layoutGraphs = qtw.QHBoxLayout()
         self.layoutGraphs.addWidget(self.imageDisplay)
         self.layoutGraphs.addWidget(self.profileGraph)
@@ -203,11 +224,11 @@ class MainWindow(qtw.QMainWindow):
         return ll
     
     def updateGraphs(self):
-        sigx = self.slider_sigx.value()
-        mux = self.slider_mux.value()
+        sigx = self.slider_sigx.value()/self.sigx_factor
+        mux = self.slider_mux.value()/self.mux_factor
         theta = self.slider_theta.value()
         phi = self.slider_phi.value()
-        print(f'mux, theta, phi = {mux}, {theta}, {phi}')
+        print(f'sigx, mux, theta, phi = {sigx}, {mux}, {theta}, {phi}')
         gg = diff.make_gaussian(self.xx, self.yy, sigx, mux, theta, phi)
         self.img.setImage(gg.T)
         self.line.setData(x=self.chans, y=self.integrateCharge(gg))
