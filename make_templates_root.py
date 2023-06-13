@@ -78,6 +78,8 @@ if __name__ == '__main__':
     #sys.exit()
     convolve = False
     row = 0
+    interval = 1000
+    print("Starting iteration:")
     for mm in range(len(diffs)):
         if diffs[mm] != 0:
             convolve = True
@@ -87,6 +89,8 @@ if __name__ == '__main__':
                 for ll in range(len(phis)):
                     for ii in range(len(muxs)):
                         #print(ii, jj, kk, ll, mm)
+                        if row % interval == 0:
+                            print(f"           {row}/{ntot}")
                         pUsed[row] = [muxs[ii], sigxs[jj], thetas[kk], phis[ll], diffs[mm]]
                         gg = off.make_gaussian(xx, yy, sigxs[jj], muxs[ii], thetas[kk], phis[ll])
                         if convolve:
@@ -96,8 +100,8 @@ if __name__ == '__main__':
                         rstData[row] /= areas # normalize based on area of ring
                         rstData[row] /= np.max(rstData[row]) # normalize...
                         row += 1
-    print("rstData = ")
-    print(rstData)
+    #print("rstData = ")
+    #print(rstData)
                         
     dd = {'mux':ak.Array(pUsed[:,0]),
           'sigx':ak.Array(pUsed[:,1]),
