@@ -1,6 +1,6 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.signal
 from scipy.optimize import curve_fit
 
 # gaussian parameters
@@ -33,11 +33,11 @@ chans = np.arange(16)
 #          ]
 
 # Measured using GerbView by James Battat on 2023 June 8
+# inner and outer radii (to midpoints of gaps between channels) in millimeters
 annuli = [ [ 0.000,  0.670], [ 0.670,  1.386], [ 1.386,  2.106], [ 2.106,  2.981],
            [ 2.981,  4.005], [ 4.005,  4.994], [ 4.994,  6.015], [ 6.015,  7.481],
            [ 7.481,  9.994], [ 9.994, 12.497], [12.497, 15.023], [15.023, 19.996],
            [19.996, 24.962], [24.962, 30.026], [30.026, 39.977], [39.977, 50.065] ]
-
 
 def compute_areas():
     areas = np.zeros(16)
@@ -70,6 +70,16 @@ def compute_masks2(xx, yy):
         
     return masks
 
+def make_diffusion_kernel(xx, yy, sigma, norm=1.0):
+    # xx: meshgrid x values
+    # yy: meshgrid y values
+    # sigma: mm (diffusion amount from drift)
+    return norm*np.exp( - 0.5*(xx**2 + yy**2)/sigma**2 )
+
+def apply_drift_diffusion(gg, kernel):
+    # standard convolution is ***way*** too slow (scipy.signal.convolve2d)
+    return scipy.signal.fftconvolve(gg, kernel, mode='same')
+
 def make_gaussian(xx, yy, sigx, mux, theta, phi):
     # theta [degrees]  is angle from the normal to the cathode
     # theta=0 gives symmetric gaussian
@@ -96,6 +106,7 @@ def make_gaussian(xx, yy, sigx, mux, theta, phi):
 
 
 def compute_masks(xx, yy):
+    ##### DEFUNCT! see compute_masks2()
     nx = len(xx)
     ny = len(yy)
     # (inner,outer) in mm
