@@ -32,20 +32,22 @@ class MainWindow(qtw.QMainWindow):
         self.pressure_scan_data = []
 
         self.dirname = "data/pressure_scan/20230519/"
-        self.fnames = ["05_19_2023_08_41_26_data.csv", "05_19_2023_11_50_02_data.csv",
-                       "05_19_2023_14_57_48_data.csv", "05_19_2023_09_31_24_data.csv",
-                       "05_19_2023_12_36_24_data.csv", "05_19_2023_15_45_23_data.csv",
-                       "05_19_2023_10_17_29_data.csv", "05_19_2023_13_23_33_data.csv",
-                       "05_19_2023_16_33_02_data.csv", "05_19_2023_11_03_17_data.csv",
-                       "05_19_2023_14_10_43_data.csv", "05_19_2023_17_21_28_data.csv"
+        self.fnames = ["05_19_2023_08_41_26_data.csv", "05_19_2023_09_31_24_data.csv",
+                       "05_19_2023_10_17_29_data.csv", "05_19_2023_11_03_17_data.csv",
+                       "05_19_2023_11_50_02_data.csv", "05_19_2023_12_36_24_data.csv",
+                       "05_19_2023_13_23_33_data.csv", "05_19_2023_14_10_43_data.csv",
+                       "05_19_2023_14_57_48_data.csv", "05_19_2023_15_45_23_data.csv",
+                       "05_19_2023_16_33_02_data.csv", "05_19_2023_17_21_28_data.csv"
                        ]
         self.pressures = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 760]
         # Configure the data plots
         self.load_pressure_scan()
         
         # Default values
-        sigx0, mux0, theta0, phi0 = 1.9, 3.3, 75, 13
-        sigdrift0 = 3.0
+        #sigx0, mux0, theta0, phi0 = 1.9, 3.3, 75, 13
+        #sigdrift0 = 3.0
+        sigx0, mux0, theta0, phi0 = 1.3, 3.0, 70, -25.0
+        sigdrift0 = 0.3
         
         # Initialize the data
         # Image plot

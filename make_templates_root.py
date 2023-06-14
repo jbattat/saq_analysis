@@ -1,5 +1,6 @@
 import sys
 import argparse
+from datetime import datetime
 import numpy as np
 import awkward as ak
 import uproot
@@ -11,7 +12,7 @@ parser.add_argument('-t', '--theta', nargs='+')  # fiber angle perp to cathode
 parser.add_argument('-p', '--phi', nargs='+')    # fiber angle in plane of cathode
 parser.add_argument('-s', '--sigx', nargs='+')   # width of UV illumination
 parser.add_argument('-d', '--diff', nargs='+')   # diffusion due to drift (mm)
-
+parser.add_argument('-f', '--fout', nargs=1, help='Name of output file')   # diffusion due to drift (mm)
 
 def makeParamRange(pp):
     # Generate the parameters to scan over
@@ -28,6 +29,12 @@ def makeParamRange(pp):
         print("Warning: requested and implemented parameter step sizes don't agree")
         print(f"   step requested, step used = {pstep}, {pstep2}")
     return pvals
+
+def makeOutFileName(fout):
+    if fout is None:
+        timestr = datetime.now().strftime("%Y%m%d%H%M%S")
+        fout = f'resets_'+timestr+'.root'
+    return fout
 
 if __name__ == '__main__':
 
@@ -49,6 +56,8 @@ if __name__ == '__main__':
     print(f"phis = {phis}")
     diffs = makeParamRange(args.diff)
     print(f"diffs = {diffs}")
+    fout = makeOutFileName(args.fout)
+    print(f"fout = {fout}")
     
     nn = 16  # Number of SAQ readout channels
     
@@ -111,6 +120,6 @@ if __name__ == '__main__':
           'rst':ak.Array(rstData)
           }
     
-    ff = uproot.recreate("resets.root")
+    ff = uproot.recreate("resets_small.root")
     ff['tree'] = dd
     
