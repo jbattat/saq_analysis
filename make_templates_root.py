@@ -13,6 +13,13 @@ parser.add_argument('-p', '--phi', nargs='+')    # fiber angle in plane of catho
 parser.add_argument('-s', '--sigx', nargs='+')   # width of UV illumination
 parser.add_argument('-d', '--diff', nargs='+')   # diffusion due to drift (mm)
 parser.add_argument('-f', '--fout', nargs=1, help='Name of output file')   # diffusion due to drift (mm)
+parser.add_argument('-n', '--dry-run', action='store_true', help='Show what would have been done')   # compute how many samples...
+
+# --mux 0 5 0.1
+# --theta 60 80 2
+# --phi -87 87 3
+# --sigx 1.0 2.0 0.5
+# --diff 0 4.0 0.2
 
 def makeParamRange(pp):
     # Generate the parameters to scan over
@@ -44,6 +51,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
+    
     # FIXME: Check for valid inputs...
     # either one element or three. And valid floats...
 
@@ -61,6 +69,17 @@ if __name__ == '__main__':
     fout = makeOutFileName(args.fout)
     print(f"fout = {fout}")
 
+    nmux = len(muxs)
+    nsigx = len(sigxs)
+    ntheta = len(thetas)
+    nphi = len(phis)
+    ndiff = len(diffs)
+    ntot = nmux*nsigx*ntheta*nphi*ndiff
+    print(f"nmux, nsigx, ntheta, nphi, ndiff = {nmux}, {nsigx}, {ntheta}, {nphi}, {ndiff}")
+    print(f"total number of templates: {ntot}")
+    if args.dry_run:
+        sys.exit()
+
     nn = 16  # Number of SAQ readout channels
     
     # The "active area"
@@ -75,12 +94,10 @@ if __name__ == '__main__':
                           np.linspace(ymin, ymax, ny))
     masks = off.compute_masks2(xx, yy)
 
-    ntot = len(muxs)*len(sigxs)*len(thetas)*len(phis)*len(diffs)
     rstData = np.zeros((ntot, 16), dtype=float)
 
     pUsed = np.zeros( (ntot, 5), dtype=float)
     
-    print(f"ntot = {ntot}")
     #print("rstData = ")
     #print(rstData)
 
@@ -91,14 +108,14 @@ if __name__ == '__main__':
     row = 0
     interval = 1000
     print("Starting iteration:")
-    for mm in range(len(diffs)):
+    for mm in range(ndiff):
         if diffs[mm] != 0:
             convolve = True
             kernel = off.make_diffusion_kernel(xx, yy, diffs[mm], norm=1.0)
-        for jj in range(len(sigxs)):
-            for kk in range(len(thetas)):
-                for ll in range(len(phis)):
-                    for ii in range(len(muxs)):
+        for jj in range(nsigx):
+            for kk in range(ntheta):
+                for ll in range(nphi):
+                    for ii in range(nmux):
                         #print(ii, jj, kk, ll, mm)
                         if row % interval == 0:
                             print(f"           {row}/{ntot}")
