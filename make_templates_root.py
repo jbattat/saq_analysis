@@ -34,6 +34,8 @@ def makeOutFileName(fout):
     if fout is None:
         timestr = datetime.now().strftime("%Y%m%d%H%M%S")
         fout = f'resets_'+timestr+'.root'
+    else:
+        fout = fout[0]
     return fout
 
 if __name__ == '__main__':
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     print(f"diffs = {diffs}")
     fout = makeOutFileName(args.fout)
     print(f"fout = {fout}")
-    
+
     nn = 16  # Number of SAQ readout channels
     
     # The "active area"
@@ -120,6 +122,6 @@ if __name__ == '__main__':
           'rst':ak.Array(rstData)
           }
     
-    ff = uproot.recreate("resets_small.root")
+    ff = uproot.recreate(fout)
     ff['tree'] = dd
     

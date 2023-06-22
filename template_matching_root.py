@@ -3,11 +3,14 @@
 # "fit" by scaling the measurements to best match the data
 # save/record the scaled data and the chi-squared and the abs-chi in a "bdat" tree
 
+import sys
 import numpy as np
 import uproot
 import matplotlib.pyplot as plt
 import awkward as ak
 
+data_fname = "data/pressure_scan/20230519/pressure_scan_data.root"
+    
 def optimal_scaling_factor(model, data, errors=None, ids=None):
     if ids is None:
         ids = np.arange(len(data), dtype=int)
@@ -30,26 +33,33 @@ def read_template_data(fname):
     tree = uproot.open(fname)["tree"]
     dd = tree.arrays(["mux", "sigx", "theta", "phi", "diff", "rst"])
     return dd
-
     #"{pp['mux'][ii]}, {pp['sigx'][ii]}, {pp['theta'][ii]}, {pp['phi'][ii]}, {pp['diff'][ii]}"
+
+#def read_template_data(fnames):
+#    # fnames can be a string (single file) or a list of strings (multiples files)
+#    df = ROOT.RDataFrame("tree", fnames)
+#    dd = df.AsNumpy()
+#    return dd
+
     
 if __name__ == '__main__':
 
-    data_fname = "data/pressure_scan/20230519/pressure_scan_data.root"
-    
+    sim_fname = sys.argv[1] # FIXME: add check for valid name
+    #print(f'sim_fname = {sim_fname}')
+
     # read in the pressure scan data
     pp, rst, rstRaw = read_pressure_data(data_fname)
     presStrings = [f'{xx:.1f}' for xx in pp]  # used for TTree branch names?
 
-    # template data
-    #fname = 'resets_9.root'
-    sim_fname = 'resets_small.root'
+    # read in the template data
+    #sim_fname = 'resets_small2.root'
     bdat_fname = sim_fname.replace(".root", "_bdat.root")
     sim = read_template_data(sim_fname)
 
     chans = np.arange(16)+1
 
-    ids = np.arange(15, dtype=int)+1 # skip channel 1
+    # skip channel 1
+    ids = np.arange(1, 15, dtype=int)  
     
     nd = len(pp)         # number of datasets (pressures)
     ns = len(sim['mux'])  # number of simulations
@@ -62,13 +72,9 @@ if __name__ == '__main__':
             AA[ii,ip] = optimal_scaling_factor(sim['rst'][ii], rst[ip], errors=None, ids=ids)
             chisq[ii,ip] = np.sum( (rst[ip] - sim['rst'][ii]*AA[ii,ip])**2 )
 
-    # compile the TTree data
-    dd = {'mux':ak.Array(sim['mux']),
-          'sigx':ak.Array(sim['sigx']),
-          'theta':ak.Array(sim['theta']),
-          'phi':ak.Array(sim['phi']),
-          'diff':ak.Array(sim['diff'])
-          }
+    ## compile the TTree data
+    dd = {}
+
     # each pressure gets two columns (scale factor and chisquared value)
     for ip, ps in enumerate(presStrings):
         dd[ps+"_scaleFactor"] = ak.Array(AA[:,ip])
@@ -77,11 +83,3 @@ if __name__ == '__main__':
     ff = uproot.recreate(bdat_fname)
     ff['bdat'] = dd
     
-    # Plot a single pressure data set with a bunch of templates overlaid
-    #ip = 7
-    #plt.plot(chans[ids], rst[ip][ids], 'ko')
-    #colors = np.linspace(0.2,1, num=ns)
-    #for ii in range(ns):
-    #    plt.plot(chans[ids], sim['rst'][ii][ids]*AA[ii,ip], color=str(colors[ii]), linestyle=":")
-    #plt.title(f"Pressure = {pp[ip]} Torr")    
-    #plt.show()
