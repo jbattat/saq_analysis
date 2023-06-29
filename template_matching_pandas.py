@@ -9,11 +9,12 @@ import pandas as pd
 import ROOT
 import uproot
 import matplotlib.pyplot as plt
+import offset_simulation as off
 #import awkward as ak
 
 data_fname = "data/pressure_scan/20230519/pressure_scan_data.root"
     
-def optimal_scaling_factor(model, data, errors=None, ids=None):
+def optimal_scaling_factor2(model, data, errors=None, ids=None):
     if ids is None:
         ids = np.arange(len(data), dtype=int)
         
@@ -50,10 +51,20 @@ def read_template_data(fnames):
     
 if __name__ == '__main__':
 
-    sim_fname = sys.argv[1:] # FIXME: add check for valid name
+    #sim_fname = sys.argv[1:] # FIXME: add check for valid name
+
+    sim_fname = ['resets_20230622110548.root', 'resets_20230622110555.root',
+                 'resets_20230622110601.root', 'resets_20230622110607.root',
+                 'resets_20230622110613.root', 'resets_20230622110619.root',
+                 'resets_20230622110623.root', 'resets_20230622110627.root',
+                 'resets_20230622110631.root', 'resets_20230622110637.root', 
+                 'resets_20230622110643.root', 'resets_20230622110656.root',
+                 'resets_20230622110700.root', 'resets_20230622110707.root',
+                 'resets_20230622110713.root', 'resets_20230622110716.root']
+    
     print(f'sim_fname = {sim_fname}')
-    foutChisq = 'resets_chisq.pkl'
-    foutTemplates = 'resets_templates.pkl'
+    foutChisq = 'resets_BIG_chisq.pkl'
+    foutTemplates = 'resets_BIG_templates.pkl'
     print(f"chisq to be saved as pandas DataFrame in: {foutChisq}")
     print(f"merged templates to be saved as pandas DataFrame in: {foutTemplates}")
     
@@ -81,7 +92,7 @@ if __name__ == '__main__':
         print('pres = '+presStrings[ip])
         for ii in range(ns): # loop over simulation parameters
             templ = np.array(sim['rst'][ii])
-            AA[ii,ip] = optimal_scaling_factor(templ, rst[ip], errors=None, ids=ids)
+            AA[ii,ip] = off.optimal_scaling_factor(templ, rst[ip], errors=None, ids=ids)
             chisq[ii,ip] = np.sum( (rst[ip] - templ*AA[ii,ip])**2 )
             #AA[ii,ip] = optimal_scaling_factor(sim['rst'][ii], rst[ip], errors=None, ids=ids)
             #chisq[ii,ip] = np.sum( (rst[ip] - sim['rst'][ii]*AA[ii,ip])**2 )

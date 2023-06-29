@@ -1,7 +1,10 @@
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 from scipy.optimize import curve_fit
+import awkward as ak
+import uproot
 
 # gaussian parameters
 #sigx = [1, 1.5, 2, 2.5, 3] # mm (diffusion width)
@@ -38,6 +41,7 @@ annuli = [ [ 0.000,  0.670], [ 0.670,  1.386], [ 1.386,  2.106], [ 2.106,  2.981
            [ 2.981,  4.005], [ 4.005,  4.994], [ 4.994,  6.015], [ 6.015,  7.481],
            [ 7.481,  9.994], [ 9.994, 12.497], [12.497, 15.023], [15.023, 19.996],
            [19.996, 24.962], [24.962, 30.026], [30.026, 39.977], [39.977, 50.065] ]
+
 
 def compute_areas():
     areas = np.zeros(16)
@@ -229,4 +233,78 @@ if __name__ == '__main__':
     plt.show()
         
     
+def read_pressure_data(fname, fmt='awkward'):
+    tree = uproot.open(fname)["tree"]    
+    pressures = tree['pressure'].array()
+    rst = tree['rst'].array()
+    rstRaw = tree['rstRaw'].array()
 
+    if fmt == 'numpy':
+        pressures = ak.to_numpy(pressures)
+        rst = ak.to_numpy(rst)
+        rstRaw = ak.to_numpy(rstRaw)
+        
+    return pressures, rst, rstRaw
+
+def optimal_scaling_factor(model, data, errors=None, ids=None):
+    if ids is None:
+        ids = np.arange(len(data), dtype=int)
+        
+    if errors is None:
+        return np.sum(data*model) / np.sum(model*model)
+    else:
+        return np.sum(data*model/errors) / np.sum(model*model/errors)
+
+def ids_of_min_chisq(df, cols):
+    # find the diffusion parameter that gives the minimum chi squared for each dataset
+    # df is a subset of the whole simulation set for which the nuissance parameters are
+    #    all the same (mux, sigx, theta, phi). But the diffusion parameter can vary
+    #    across datasets
+    ids = []
+    for col in cols:
+        ids.append(df[col].idxmin())
+    return ids
+
+def get_min_chisq(df, cols, ids):
+    # get the chisq value of the best fit
+    chisq = 0
+    for ii, col in enumerate(cols):
+        chisq += df[col][ids[ii]]
+    return chisq
+
+def get_best_diffs(df, cols, ids):
+    # Return an array of diffusion values that give the best fit
+    diffs = []
+    for ii, idx in enumerate(ids):
+        diffs.append(df['diff'][idx])
+    return np.array(diffs)
+
+
+##### DEFUNCT (not needed)
+#def find_smallest_chisq_sum(df):
+#    sums = []
+#    bestCombo = None
+#    minChi = 1e99
+#    cols = [x for x in list(df.columns) if "_chisq" in x]
+#    cols.sort()
+#    for combination in itertools.product(range(len(df)), repeat=len(cols)):
+#        sums.append(0)
+#        print(combination)
+#        for ii, colname in enumerate(cols):
+#            sums[-1] += df[colname][df.index[combination[ii]]]
+#        if sums[-1] < minChi:
+#            minChi = sums[-1]
+#            bestCombo = combination
+#            #print(f"Found new winner: {bestCombo}, {minChi}")
+#    return bestCombo, minChi
+#
+#    
+#def compute_all_possible_sums(df):
+#    sums = []
+#    for combination in itertools.product(range(len(df)), repeat=len(df.columns)):
+#        #print(f"combination = {combination}")
+#        sums.append(0)
+#        for ii, colname in enumerate(df.columns):
+#            sums[-1] += df[colname][combination[ii]]
+#    return sums
+    
