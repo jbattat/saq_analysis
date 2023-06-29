@@ -7,7 +7,7 @@ So far:
    Produces several `.root` files containing parameter values and simulated resets (per area).  
 2. `templates_merge.py`  
    Produce a single Pandas DataFrame containing *all* templates. Store in a pickle file
-3. `template_compute_chisq_pandas.py`  
+3. `template_compute_chisq.py`  
    Compute and save the optimal scaling factor and sum of squares of residuals between data and model
 4. `template_compute_optimal_parameter_sets.py`  
    For each set of nuissance parameters, find the set of diffusion parameters that minimizes the overall chi-squared
