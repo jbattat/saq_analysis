@@ -9,8 +9,10 @@ So far:
    Produce a single Pandas DataFrame containing *all* templates. Store in a pickle file
 3. `template_compute_chisq_pandas.py`  
    Compute and save the optimal scaling factor and sum of squares of residuals between data and model
-4. TBD  
-   For each set of nuissance parameters, find the best set of diffusion parameters for the data.
+4. `template_compute_optimal_parameter_sets.py`  
+   For each set of nuissance parameters, find the set of diffusion parameters that minimizes the overall chi-squared
+5. `template_analysis.py`  
+   Plot the data and best fit models
 
 Helper functions
 * `offset_simulation.py`
