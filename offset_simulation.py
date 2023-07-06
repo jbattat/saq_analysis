@@ -1,9 +1,12 @@
+import sys
 import itertools
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 from scipy.optimize import curve_fit
 import awkward as ak
+import pandas as pd
 import uproot
 
 # gaussian parameters
@@ -231,7 +234,63 @@ if __name__ == '__main__':
             axs[irow, icol].set_title(f'mean = {round(popt[1], 2)}, sigma = {round(popt[2], 2)}')
             axs[irow, icol].set_xlim(0, 20)
     plt.show()
-        
+
+def plot_pressure_scan(df, chi=None):
+    # df as returned by load_pressure_data() (data)
+    # chi a dataframe of chisq and template parameters
+    npres = len(df)
+    nrows = 3
+    ncols = 4
+    fig, axs = plt.subplots(nrows, ncols, figsize=(12,8))
+    chans = np.arange(16)
+    idx = np.arange(15)+1 # skip channel 1
+    for ii in range(npres):
+        irow = int(np.floor(ii/ncols))
+        icol = ii % ncols
+        pres = f"{df['pres'][ii]:.0f} Torr"
+        axs[irow, icol].errorbar(chans[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=pres)
+        axs[irow, icol].legend()
+    plt.show()
+
+def load_pressure_data():
+    # read all pressure data
+    # return a single Pandas DataFrame
+    # along with errors
+    froot = 'data/pressure_scan/20230519/'
+    fnames = ["05_19_2023_08_41_26_data.csv", "05_19_2023_09_31_24_data.csv",
+              "05_19_2023_10_17_29_data.csv", "05_19_2023_11_03_17_data.csv",
+              "05_19_2023_11_50_02_data.csv", "05_19_2023_12_36_24_data.csv",
+              "05_19_2023_13_23_33_data.csv", "05_19_2023_14_10_43_data.csv",
+              "05_19_2023_14_57_48_data.csv", "05_19_2023_15_45_23_data.csv",
+              "05_19_2023_16_33_02_data.csv", "05_19_2023_17_21_28_data.csv"
+              ]
+    fnames = [os.path.join(froot, x) for x in fnames]
+    pressures = np.array([200., 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750])
+
+    # Read in the CSV files
+    rsts = []
+    rstsRaw = []
+    for ff in fnames:
+        chans, rst, rstRaw = np.loadtxt(ff, unpack=True, delimiter=',', skiprows=1)
+        rsts.append(rst)
+        rstsRaw.append(rstRaw)
+    
+    dd = {}
+    dd['pres'] = pressures
+    df = pd.DataFrame(dd)
+    # enter the reset data into the dataframe as np arrays
+    df['rst'] = [x for x in rsts]
+    df['rstRaw'] = [x for x in rstsRaw]
+
+
+    # invent errors
+    err = np.array([5, 0.25, 0.25, 0.25,
+                    2, 0.25, 1, 1,
+                    1, 1, 1, 1,
+                    1, 1, 1, 1])
+    errors = [err]*len(pressures)
+    df['rstErr'] = [x for x in errors]
+    return df
     
 def read_pressure_data(fname, fmt='awkward'):
     tree = uproot.open(fname)["tree"]    
