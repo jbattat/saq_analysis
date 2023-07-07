@@ -293,6 +293,10 @@ def load_pressure_data():
     return df
     
 def read_pressure_data(fname, fmt='awkward'):
+    if fmt.upper()=='CSV':
+        df = load_pressure_data()
+        return np.array(df['pres']), np.array(df['rst']), np.array(df['rstRaw'])
+        
     tree = uproot.open(fname)["tree"]    
     pressures = tree['pressure'].array()
     rst = tree['rst'].array()

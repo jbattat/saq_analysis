@@ -20,13 +20,17 @@ print(f"diff:  {sim['diff'].unique()}")
 print()
 
 # read in the pressure scan data
-pp, rst, rstRaw = off.read_pressure_data("data/pressure_scan/20230519/pressure_scan_data.root", fmt='numpy')
+#pp, rst, rstRaw = off.read_pressure_data("data/pressure_scan/20230519/pressure_scan_data.root", fmt='numpy')
+data = off.load_pressure_data()
+
+pp = data['pres'].to_numpy()
+rst = data['rst'].to_numpy()
+err = data['rstErr'].to_numpy()
 pStrs = [f'{p:.0f}' for p in pp]
 print(pStrs)
 
 fout = pklName.replace('.pkl', '_chisq.pkl')
 print(f'will save chisq values in: {fout}')
-
 
 if __name__ == '__main__':
 
@@ -44,16 +48,22 @@ if __name__ == '__main__':
     #        or if you avoid looping altogether and use array-based calculation?
     AA = np.zeros((ns, nd), dtype=float)
     chisq = np.zeros((ns, nd), dtype=float)
+    AANoErr = np.zeros((ns, nd), dtype=float)
+    chisqNoErr = np.zeros((ns, nd), dtype=float)
     dd = {} # will save output calculations
     for ip in range(nd):  # loop over pressures (data)
         pres = pp[ip]
         print('pres = '+pStrs[ip])
         for ii in range(ns): # loop over simulation parameters
-            AA[ii,ip] = off.optimal_scaling_factor(sim['rst'][ii], rst[ip], errors=None, ids=ids)
-            chisq[ii,ip] = np.sum( (rst[ip] - sim['rst'][ii]*AA[ii,ip])**2 )
+            AA[ii,ip] = off.optimal_scaling_factor(sim['rst'][ii], rst[ip], errors=err[ip], ids=ids)
+            chisq[ii,ip] = np.sum( ((rst[ip][ids] - sim['rst'][ii][ids]*AA[ii,ip])/err[ip][ids])**2 )
+            AANoErr[ii,ip] = off.optimal_scaling_factor(sim['rst'][ii], rst[ip], errors=None, ids=ids)
+            chisqNoErr[ii,ip] = np.sum( (rst[ip][ids] - sim['rst'][ii][ids]*AA[ii,ip])**2 )
 
         dd[pStrs[ip]+"_scaleFactor"] = [x for x in AA[:,ip]]
         dd[pStrs[ip]+"_chisq"] = [x for x in chisq[:,ip]]
+        dd[pStrs[ip]+"_scaleFactorNoErr"] = [x for x in AANoErr[:,ip]]
+        dd[pStrs[ip]+"_chisqNoErr"] = [x for x in chisqNoErr[:,ip]]
 
     df = pd.DataFrame(dd)
 
