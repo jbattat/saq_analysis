@@ -239,6 +239,7 @@ def plot_pressure_scan(df, chi=None):
     # df as returned by load_pressure_data() (data)
     # chi a dataframe of chisq and template parameters
     npres = len(df)
+    nchi  = chi.index
     nrows = 3
     ncols = 4
     fig, axs = plt.subplots(nrows, ncols, figsize=(12,8))
@@ -249,6 +250,11 @@ def plot_pressure_scan(df, chi=None):
         icol = ii % ncols
         pres = f"{df['pres'][ii]:.0f} Torr"
         axs[irow, icol].errorbar(chans[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=pres)
+        if chi is None:
+            pass
+        else: 
+            for jj in nchi:
+                axs[irow, icol].plot(chans, chi['rst'][jj], label = jj)
         axs[irow, icol].legend()
     plt.show()
 
