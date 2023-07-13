@@ -51,7 +51,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)    
     # FIXME: Check for valid inputs...
     # either one element or three. And valid floats...
 
