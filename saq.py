@@ -1,6 +1,7 @@
 import numpy as np
 
 N_SAQ_CHANNELS = 16
+CLOCK_FREQ = 30.3e6 # Hz (frequency of the zybo board clock)
 
 area =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
        2.28456618e+01, 2.87737686e+01, 3.57614560e+01, 6.37454282e+01,
