@@ -1,21 +1,172 @@
 import numpy as np
+import ROOT
+import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
 
 N_SAQ_CHANNELS = 16
 CLOCK_FREQ = 30.3e6 # Hz (frequency of the zybo board clock)
-
-area =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
-       2.28456618e+01, 2.87737686e+01, 3.57614560e+01, 6.37454282e+01,
-       7.80786305e+01, 1.62677290e+02, 4.33812869e+02, 5.90985650e+02,
-       7.52725600e+02, 9.16727496e+02, 2.27871834e+03, 2.86466762e+03])
-
-midpoint = ([ 0.255 ,  1.09  ,  1.855 ,  2.645 ,  3.605 ,  4.605 ,  5.605 ,
-        6.855 ,  8.335 , 10.335 , 14.0475, 18.9625, 23.96  , 28.96  ,
-       36.44  , 46.45  ])
+# fixme: CLOCK_FREQ comes from data file directly!
+N_CLOCK_BITS = 32 # used to determine clock wraps
 
 
+# for each channel, rmin is the inner radius and rmax is the outer radius
+# units are millimeters
+rmin = [ 0.000, 0.640,  1.478,  2.205,  3.095,  4.105,  5.100,  6.115,
+         7.595, 9.089, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440]
 
-# utility functions
+rmax = [ 0.640, 1.4775,  2.205,  3.095,  4.105,  5.100,  6.115,  7.595,
+         9.085, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440, 51.275]
+rmin = np.array(rmin)
+rmax = np.array(rmax)
 
+# for backwards compatibility
+annuli = [ [rmin[ii], rmax[ii]] for ii in range(len(rmin)) ]
+
+area = np.pi*(rmax**2 - rmin**2)
+
+#area_OLD =  ([1.28679635e+00, 5.57132005e+00, 8.41638562e+00, 1.48188925e+01,
+#              2.28456618e+01, 2.87737686e+01, 3.57614560e+01, 6.37454282e+01,
+#              7.80786305e+01, 1.62677290e+02, 4.33812869e+02, 5.90985650e+02,
+#              7.52725600e+02, 9.16727496e+02, 2.27871834e+03, 2.86466762e+03])
+
+radius_of_channel = np.sqrt(0.5*(rmax**2 + rmin**2))
+
+# DEFUNCT: I don't know what "midpoint" is meant to be.
+midpoint = ([ 0.255,  1.090,  1.855,  2.645,   3.605,   4.605,  5.605,
+              6.855,  8.335, 10.335, 14.0475, 18.9625, 23.960, 28.960,
+              36.44, 46.45  ])
+
+# File utility functions
+def get_metadata(filename, verbose=False):
+    """ returns a dictionary with the meta data from a SAQ ROOT file """
+    metadata = ROOT.RDataFrame("mt", filename).AsNumpy()
+    if verbose:
+        print(metadata)
+    return {'VERSION':metadata['Version'],
+            'ZYBO_FRQ':metadata['Zybo_FRQ'],
+            'FILE_TIMESTAMP':metadata['Date'],
+            'SAQ_DIV':metadata['SAQ_DIV']
+            }
+
+def get_raw_data(filename):
+    # open up ttree into an rdataframe --> dictionary
+    # dict keys are the branch names of the TTree
+    return ROOT.RDataFrame("tt", filename).AsNumpy()
+
+def resets_by_channel(data):
+    """ returns the timestamp of each reset as a list of lists: resets[chan][reset_i] """
+
+    # create a list of the channels and all of their resets
+    return [[t for t, mask in zip(data["Timestamp"], data["ChMask"]) if m(ch, mask)]
+            for ch in range(N_SAQ_CHANNELS)]
+
+def rtds_of_resets(resets, SAQ_DIV, ZYBO_FRQ):
+    """ given a list of reset timestamps, compute the reset time differences (RTDs) """
+    rsts = np.array(resets)
+    rtds = rsts[1:]-rsts[0:-1]
+    # check for wraps...
+    # Beware1: cannot tell between 1 or more than one wrap.
+    # Beware2: not immune to wraps (since could still have rtd>0 if there is a wrap...)
+    rtds[rtds<0] += 2**N_CLOCK_BITS
+    rtds *= SAQ_DIV / ZYBO_FRQ
+    return rtds
+
+def channel_made_reset(chan, mask):
+    """ check if a specific channel is included in the channel mask """
+    # Returns True if channel "chan" is present in the mask "mask"
+    return ((1 << chan) & mask) > 0
+
+def channels_in_reset_mask(mask):
+    chlist =  [n for n in range(16) if ((mask >> n) & 1)]
+    return chlist
+
+#####################################
+# basic analyis routines
+
+def study_resets(data):
+    # in progress... want to make sure there are no
+    # outlier channels (ones that reset too often, or are high when other chans are high)
+    # don't expect many resets in which multiple channels reset at the same time...
+
+    # reset masks are saved in data['ChMask']
+    n_resets = len(data['ChMask'])
+
+    print(data['ChMask'])
+    
+    zeros   = []
+    singles = []
+    chs = []
+    multiplicity = np.zeros(N_SAQ_CHANNELS+1, dtype=np.int32)  # tally # of hits from 0 to 16
+    
+    hots  = np.zeros(16, dtype=np.int32) # "hot" pixels...? (# of times pixel N fired when 2+ pixels fired)
+    hots2 = np.zeros(16, dtype=np.int32) # "hot" pixels...? (# of times pixel N fired when exactly 2 pixels fired)
+    hots3 = np.zeros(16, dtype=np.int32) # "hot" pixels...? (# of times pixel N fired when exactly 3 pixels fired)
+    hots4p = np.zeros(16, dtype=np.int32) # "hot" pixels...? (# of times pixel N fired when 4 or more pixels fired)
+
+    freq = np.zeros(16, dtype=np.int32) # how many times did each pixel fire?
+    
+    for ii, mask in enumerate(data['ChMask']):
+        chs.append(channels_in_reset_mask(mask))
+        nhits = len(chs[-1])
+        multiplicity[nhits] += 1
+
+        for ch in chs[-1]:
+            freq[ch] += 1
+        
+        # which channels are present in multi-hit events?
+        if nhits > 1:
+            for ch in chs[-1]:
+                hots[ch] += 1
+                
+            if nhits == 2:
+                for ch in chs[-1]:
+                    hots2[ch] += 1
+            elif nhits == 3:
+                for ch in chs[-1]:
+                    hots3[ch] += 1
+            elif nhits > 3:
+                for ch in chs[-1]:
+                    hots4p[ch] += 1
+                
+    print('multiplicity:')
+    print(multiplicity)
+    print()
+    print('hots:')
+    print(hots)
+    print('hots2:')
+    print(hots2)
+    print('hots3:')
+    print(hots3)
+    print('freq:')
+    print(freq)
+    
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(15,8))
+    axs[0,0].bar(np.arange(17, dtype=np.int32), multiplicity)
+    #axs[0,0].xaxis.set_major_locator(MaxNLocator(integer=True))
+    loc = plticker.MultipleLocator(base=1.0) 
+    axs[0,0].xaxis.set_major_locator(loc)
+    axs[0,0].set_xlim(-0.5,16.5)
+    axs[0,0].set_xlabel("Number of channels that fired")
+    axs[0,0].set_ylabel("Frequency")
+    axs[0,0].set_title(f"Channel Multiplicity (Total # of resets: {n_resets})")
+
+    axs[0,1].bar(np.arange(16, dtype=np.int32), freq)
+    axs[0,1].xaxis.set_major_locator(loc)
+    axs[0,1].set_xlim(-0.5,15.5)
+    axs[0,1].set_xlabel("Channel Number")
+    axs[0,1].set_ylabel("Number of times each channel fired")
+    #axs[0,1].set_title(f"Channel Multiplicity (Total # of resets: {n_resets})")
+
+    axs[1,1].bar(np.arange(16, dtype=np.int32), hots4p)
+    axs[1,1].xaxis.set_major_locator(loc)
+    axs[1,1].set_xlim(-0.5,15.5)
+    axs[1,1].set_xlabel("Channel Number")
+    axs[1,1].set_ylabel("Number of times each channel fired")
+    axs[1,1].set_title(f"Hot channels(?): (requires 4+ channels to have fired)")
+
+    plt.savefig('junk.pdf')
+
+    
 def files_from_list(flist):
     with open(flist) as fh:
         files = fh.readlines()
