@@ -322,7 +322,7 @@ def optimal_scaling_factor(model, data, errors=None, ids=None):
     if errors is None:
         return np.sum(data*model) / np.sum(model*model)
     else:
-        return np.sum(data*model/errors) / np.sum(model*model/errors)
+        return np.sum(data*model/errors**2) / np.sum(model*model/errors**2)
 
 def ids_of_min_chisq(df, cols):
     # find the diffusion parameter that gives the minimum chi squared for each dataset
