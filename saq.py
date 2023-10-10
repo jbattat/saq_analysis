@@ -9,18 +9,25 @@ CLOCK_FREQ = 30.3e6 # Hz (frequency of the zybo board clock)
 N_CLOCK_BITS = 32 # used to determine clock wraps
 
 
+# Measured using GerbView by James Battat on 2023 June 8
 # for each channel, rmin is the inner radius and rmax is the outer radius
-# units are millimeters
-rmin = [ 0.000, 0.640,  1.478,  2.205,  3.095,  4.105,  5.100,  6.115,
-         7.595, 9.089, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440]
+# inner and outer radii (to midpoints of gaps between channels) in millimeters
+rmin = [ 0.000,  0.670,  1.386,  2.106,  2.981,  4.005,  4.994,  6.015, 
+         7.481,  9.994, 12.497, 15.023, 19.996, 24.962, 30.026, 39.977 ]
 
-rmax = [ 0.640, 1.4775,  2.205,  3.095,  4.105,  5.100,  6.115,  7.595,
-         9.085, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440, 51.275]
+rmax = [ 0.670,  1.386,  2.106,  2.981,  4.005,  4.994,  6.015,  7.481,
+         9.994, 12.497, 15.023, 19.996, 24.962, 30.026, 39.977, 50.065]
 rmin = np.array(rmin)
 rmax = np.array(rmax)
 
 # for backwards compatibility
 annuli = [ [rmin[ii], rmax[ii]] for ii in range(len(rmin)) ]
+
+# These values are old -- do not use...
+#rmin = [ 0.000, 0.640,  1.478,  2.205,  3.095,  4.105,  5.100,  6.115,
+#         7.595, 9.089, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440]
+#rmax = [ 0.640, 1.4775,  2.205,  3.095,  4.105,  5.100,  6.115,  7.595,
+#         9.085, 11.590, 16.505, 21.460, 26.460, 31.495, 41.440, 51.275]
 
 area = np.pi*(rmax**2 - rmin**2)
 
@@ -60,14 +67,36 @@ def resets_by_channel(data):
     return [[t for t, mask in zip(data["Timestamp"], data["ChMask"]) if m(ch, mask)]
             for ch in range(N_SAQ_CHANNELS)]
 
+def unwrap_resets(resets_wrapped, counter_bits):
+    """ unwrap reset timestamps
+    
+    inputs:
+    .   resets: counter values corresponding to recorded resets
+    .   counter_bits: number of bits for the counter (e.g. 32)
+    
+    output:
+    .   the unwrapped (monotonically increasing) counter value
+    """
+    return np.unwrap(resets_wrapped, period=2**nbits)
+
+
 def rtds_of_resets(resets, SAQ_DIV, ZYBO_FRQ):
-    """ given a list of reset timestamps, compute the reset time differences (RTDs) """
+    """ given a list of reset timestamps, compute the reset time differences (RTDs)
+    
+    Assumes that the reset timestamps have been unwrapped, but are in clock counts
+    (not time in seconds)
+
+    inputs:
+    .    resets: list of resets timestampe (clock counts) ***unwrapped***
+    .    SAQ_DIV: divisor factor applied to the raw FPGA clock
+    .    ZYBO_FRQ: frequency of FPGA clock
+
+    e.g. if the zybo clock is 20MHz (50ns period) and the
+    divisor is 1,000 then a timestamp of 500 corresponds to
+    500*1000 ticks of the 20MHz clock, or 500*100*50ns = 25ms
+    """
     rsts = np.array(resets)
     rtds = rsts[1:]-rsts[0:-1]
-    # check for wraps...
-    # Beware1: cannot tell between 1 or more than one wrap.
-    # Beware2: not immune to wraps (since could still have rtd>0 if there is a wrap...)
-    rtds[rtds<0] += 2**N_CLOCK_BITS
     rtds *= SAQ_DIV / ZYBO_FRQ
     return rtds
 
