@@ -77,7 +77,7 @@ def unwrap_resets(resets_wrapped, counter_bits):
     output:
     .   the unwrapped (monotonically increasing) counter value
     """
-    return np.unwrap(resets_wrapped, period=2**nbits)
+    return np.unwrap(resets_wrapped, period=2**counter_bits)
 
 
 def rtds_of_resets(resets, SAQ_DIV, ZYBO_FRQ):
