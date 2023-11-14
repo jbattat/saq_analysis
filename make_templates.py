@@ -1,3 +1,6 @@
+# DON'T USE THIS ONE...
+# See: make_templates_root.py instead!
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
