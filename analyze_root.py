@@ -133,8 +133,7 @@ for ch in range(10):
     for r in range(len(chResets[ch])-1):
         prev = chResets[ch][r+1]
         curr = chResets[ch][r]
-        temp  = prev - curr
-        rtd[ch][r] = temp
+        rtd[ch][r] = prev - curr
         if rtd[ch][r] < 1e-4:
             remove_r.append(r)
         else:
