@@ -31,12 +31,6 @@ ny = 2000
 
 # Geometry of anode rings
 chans = np.arange(16)
-# min and max radii of each annulus
-#annuli = [ [ 0, 0.64], [ 0.64, 1.4775], [ 1.4775, 2.205], [ 2.205, 3.095],
-#           [ 3.095, 4.105], [ 4.105, 5.1], [ 5.1, 6.115], [ 6.115, 7.595],
-#           [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
-#           [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275] # FIXME (number of data files in pressure scan) # FIXME (number of data files in pressure scan)
-#          ]
 
 # Measured using GerbView by James Battat on 2023 June 8
 # inner and outer radii (to midpoints of gaps between channels) in millimeters
@@ -45,6 +39,12 @@ annuli = [ [ 0.000,  0.670], [ 0.670,  1.386], [ 1.386,  2.106], [ 2.106,  2.981
            [ 7.481,  9.994], [ 9.994, 12.497], [12.497, 15.023], [15.023, 19.996],
            [19.996, 24.962], [24.962, 30.026], [30.026, 39.977], [39.977, 50.065] ]
 
+# min and max radii of each annulus
+# OLD VALUES -- USE AT YOUR OWN RISK
+#annuli = [ [ 0, 0.64], [ 0.64, 1.4775], [ 1.4775, 2.205], [ 2.205, 3.095],
+#           [ 3.095, 4.105], [ 4.105, 5.1], [ 5.1, 6.115], [ 6.115, 7.595],
+#           [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
+#           [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275] ]
 
 def compute_areas():
     areas = np.zeros(16)
@@ -235,11 +235,10 @@ if __name__ == '__main__':
             axs[irow, icol].set_xlim(0, 20)
     plt.show()
 
-def plot_pressure_scan(df, chi=None):
+def plot_pressure_scan(df, chi=None, radii=None, plot_uncal=True, plot_cal=False, plot_bestFit=False):
     # df as returned by load_pressure_data() (data)
     # chi a dataframe of chisq and template parameters
     npres = len(df)
-    nchi  = chi.index
     nrows = 3
     ncols = 4
     fig, axs = plt.subplots(nrows, ncols, figsize=(12,8))
@@ -249,12 +248,27 @@ def plot_pressure_scan(df, chi=None):
         irow = int(np.floor(ii/ncols))
         icol = ii % ncols
         pres = f"{df['pres'][ii]:.0f} Torr"
-        axs[irow, icol].errorbar(chans[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=pres)
+        if radii is not None:
+            xvals = radii[:]
+        else:
+            xvals = chans[idx][:]
+        if plot_uncal:
+            axs[irow, icol].errorbar(xvals[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=pres)
+            #axs[irow, icol].errorbar(chans[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=pres)
+        if plot_cal:  #'rstCal' in df.columns:
+            axs[irow, icol].plot(xvals[idx], df['rstCal'][ii][idx], 'bo', label=pres)
+            
+        #if 'bestFit' in df.columns:
+        if plot_bestFit:
+            axs[irow, icol].plot(xvals[idx], df['bestFit'][ii][idx], 'r:')
+            
         if chi is None:
             pass
         else: 
+            nchi  = chi.index
             for jj in nchi:
                 axs[irow, icol].plot(chans, chi['rst'][jj], label = jj)
+        axs[irow, icol].set_xlim([0,20])
         axs[irow, icol].legend()
     plt.show()
 
@@ -288,12 +302,14 @@ def load_pressure_data():
     df['rst'] = [x for x in rsts]
     df['rstRaw'] = [x for x in rstsRaw]
 
-
     # invent errors
-    err = np.array([5, 0.25, 0.25, 0.25,
-                    2, 0.25, 1, 1,
-                    1, 1, 1, 1,
-                    1, 1, 1, 1])
+    #err = np.array([5, 0.25, 0.25, 0.25,
+    #                2, 0.25, 1, 1,
+    #                1, 1, 1, 1,
+    #                1, 1, 1, 1])
+    err = np.array([0.1]*16) # tiny errors...
+    for ii in range(4,6):
+        err[ii] = err[ii]/10
     errors = [err]*len(pressures)
     df['rstErr'] = [x for x in errors]
     return df
