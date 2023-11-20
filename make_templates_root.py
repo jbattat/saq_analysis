@@ -108,7 +108,8 @@ if __name__ == '__main__':
     #sys.exit()
     convolve = False
     row = 0
-    interval = 1000
+    #interval = 1000
+    interval = int(ntot/10)
     print("Starting iteration:")
     for mm in range(ndiff):
         if diffs[mm] != 0:
