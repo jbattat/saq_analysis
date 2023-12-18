@@ -30,18 +30,49 @@ class MainWindow(qtw.QMainWindow):
 
         self.chans = np.arange(16)+1     # channel number (1-16)
         self.pressure_scan_data = []
+        self.efield_scan_data = []
 
-        self.dirname = "data/pressure_scan/20230519/"
-        self.fnames = ["05_19_2023_08_41_26_data.csv", "05_19_2023_09_31_24_data.csv",
-                       "05_19_2023_10_17_29_data.csv", "05_19_2023_11_03_17_data.csv",
-                       "05_19_2023_11_50_02_data.csv", "05_19_2023_12_36_24_data.csv",
-                       "05_19_2023_13_23_33_data.csv", "05_19_2023_14_10_43_data.csv",
-                       "05_19_2023_14_57_48_data.csv", "05_19_2023_15_45_23_data.csv",
-                       "05_19_2023_16_33_02_data.csv", "05_19_2023_17_21_28_data.csv"
-                       ]
+        #self.dirnamePressure = "data/pressure_scan/20230519/"
+        #self.fnamesPressure = ["05_19_2023_08_41_26_data.csv", "05_19_2023_09_31_24_data.csv",
+        #                       "05_19_2023_10_17_29_data.csv", "05_19_2023_11_03_17_data.csv",
+        #                       "05_19_2023_11_50_02_data.csv", "05_19_2023_12_36_24_data.csv",
+        #                       "05_19_2023_13_23_33_data.csv", "05_19_2023_14_10_43_data.csv",
+        #                       "05_19_2023_14_57_48_data.csv", "05_19_2023_15_45_23_data.csv",
+        #                       "05_19_2023_16_33_02_data.csv", "05_19_2023_17_21_28_data.csv"
+        #                       ]
+        self.dirnamePressure = 'data/pressure_scan/20230519/updatedArea/'
+        self.fnamesPressure = ["05_19_2023_pressureScan_200torr.csv", "05_19_2023_pressureScan_250torr.csv",
+                               "05_19_2023_pressureScan_300torr.csv", "05_19_2023_pressureScan_350torr.csv",
+                               "05_19_2023_pressureScan_400torr.csv", "05_19_2023_pressureScan_450torr.csv",
+                               "05_19_2023_pressureScan_500torr.csv", "05_19_2023_pressureScan_550torr.csv",
+                               "05_19_2023_pressureScan_600torr.csv", "05_19_2023_pressureScan_650torr.csv",
+                               "05_19_2023_pressureScan_700torr.csv", "05_19_2023_pressureScan_760torr.csv" ]
         self.pressures = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 760]
+        #
+        self.dirnameEscan = "data/efield_scan/20230522/updatedArea/"
+        self.fnamesEscan = ["05_22_2023_EScan_200.csv", "05_22_2023_EScan_250.csv",
+                            "05_22_2023_EScan_300.csv", "05_22_2023_EScan_350.csv",
+                            "05_22_2023_EScan_400.csv"]
+        self.eFields = [200, 250, 300, 350, 400]
+
         # Configure the data plots
         self.load_pressure_scan()
+        self.load_efield_scan()
+
+
+        usePressureScan = False
+        if usePressureScan:
+            self.data_to_use = np.copy(self.pressure_scan_data)
+            self.labels_to_use = self.pressures[:]
+            self.nrows = 2
+            self.ncols = 6
+        else:
+            self.data_to_use = np.copy(self.efield_scan_data)
+            self.labels_to_use = self.eFields[:]
+            self.nrows = 2
+            self.ncols = 3
+        
+        self.n_data_sets = len(self.data_to_use)
         
         # Default values
         #sigx0, mux0, theta0, phi0 = 1.9, 3.3, 75, 13
@@ -64,20 +95,22 @@ class MainWindow(qtw.QMainWindow):
         self.dataPlotAxes = []
         self.dataPlotPoints = []
         self.dataPlotLines = []
-        for ii in range(12): # FIXME (number of data files in pressure scan)
-            row = int(np.floor(ii/6))
-            col = ii%6
+        print(f'self.n_data_sets = {self.n_data_sets}')
+        #for ii in range(12): # FIXME (number of data files in pressure scan)
+        for ii in range(self.n_data_sets):
+            row = int(np.floor(ii/self.ncols))
+            col = ii%self.ncols
 
-            # One set of axes per pressure
+            # One set of axes per dataset
             self.dataPlotAxes.append( self.dataPlots.addPlot(row=row, col=col) )
-            self.dataPlotAxes[-1].setTitle(self.pressures[ii])
+            self.dataPlotAxes[-1].setTitle(self.labels_to_use[ii])
             
-            # Pressure scan data (points)
-            self.dataPlotPoints.append( self.dataPlotAxes[-1].plot(self.chans[1:], self.pressure_scan_data[ii][1:],
+            # Pressure scan or E-field scan data (points)
+            self.dataPlotPoints.append( self.dataPlotAxes[-1].plot(self.chans[1:], self.data_to_use[ii][1:],
                                                                   pen=None) )
             self.dataPlotPoints[-1].setSymbol('o')
 
-            # "fits" to pressure scan data (lines)
+            # "fits" to data (lines)
             self.dataPlotLines.append( self.dataPlotAxes[-1].plot(self.chans[1:], self.chans[1:],
                                                                   pen=pg.mkPen(color='red', width=2) ))
             
@@ -221,7 +254,7 @@ class MainWindow(qtw.QMainWindow):
         
     def add_profile_to_data_plots(self):
         xvals, yvals = self.line.getData()
-        for ii in range(len(self.fnames)):
+        for ii in range(self.n_data_sets):
             _, ydata = self.dataPlotPoints[ii].getData()
             # scale ydata to match actual data
             self.dataPlotLines[ii].setData(xvals[1:], yvals[1:]*np.max(ydata)/np.max(yvals))
@@ -229,13 +262,25 @@ class MainWindow(qtw.QMainWindow):
         
     def load_pressure_scan(self):
         #dirname = "/Users/jbattat/research/qpix/saq_analysis/data/pressure_scan/20230519/"
-        fnames = [os.path.join(self.dirname, fn) for fn in self.fnames]
+        fnames = [os.path.join(self.dirnamePressure, fn) for fn in self.fnamesPressure]
         #print(fnames)
 
+        nskip = 1
         for ii in range(len(fnames)):
-            junk1, rsts, junk2 = np.loadtxt(fnames[ii], delimiter=",", skiprows=1, unpack=True)
+            junk1, rsts, junk2 = np.loadtxt(fnames[ii], delimiter=",", comments='#', skiprows=nskip, unpack=True)
             self.pressure_scan_data.append(rsts[:])
-        
+
+    def load_efield_scan(self):
+        #dirname = "/Users/jbattat/research/qpix/saq_analysis/data/pressure_scan/20230519/"
+        fnames = [os.path.join(self.dirnameEscan, fn) for fn in self.fnamesEscan]
+        print(fnames)
+
+        nskip = 1
+        for ii in range(len(fnames)):
+            junk1, rsts, junk2 = np.loadtxt(fnames[ii], delimiter=",", comments='#', skiprows=nskip, unpack=True)
+            self.efield_scan_data.append(rsts[:])
+
+            
     def draw_anode(self):
         for ii in range(16):
             w = 2*self.midpoints[ii]
@@ -286,7 +331,7 @@ class MainWindow(qtw.QMainWindow):
 
         # update lines on the pressure scan plots
         xvals, yvals = self.line.getData()
-        for ii in range(len(self.fnames)):
+        for ii in range(self.n_data_sets):
             _, ydata = self.dataPlotPoints[ii].getData()
             # scale ydata to match actual data
             self.dataPlotLines[ii].setData(xvals[1:], yvals[1:]*np.max(ydata)/np.max(yvals))

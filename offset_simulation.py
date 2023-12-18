@@ -46,6 +46,13 @@ annuli = [ [ 0.000,  0.670], [ 0.670,  1.386], [ 1.386,  2.106], [ 2.106,  2.981
 #           [ 7.595, 9.085], [ 9.0855, 11.590], [11.590, 16.505], [16.505, 21.460],
 #           [21.460, 26.460], [26.460, 31.495], [31.495, 41.440], [41.440, 51.275] ]
 
+def rmaxes():
+    # return the max radii for each annulus
+    rmaxes = []
+    for ii in range(len(annuli)):
+        rmaxes.append(annuli[ii][1])
+    return np.array(rmaxes)
+
 def compute_areas():
     areas = np.zeros(16)
     for ii, chan in enumerate(chans):
@@ -150,6 +157,13 @@ def compute_masks(xx, yy):
 def gauss(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
+def integrateCharge(cloud, masks, areas):
+    ll = []
+    for ii in range(16):
+        ll.append( np.sum(cloud*masks[ii])/areas[ii])
+    return ll
+
+
 def chi_squared(data, model):
 
     chi_squared = np.sum((data - model)**2/model)
@@ -235,7 +249,58 @@ if __name__ == '__main__':
             axs[irow, icol].set_xlim(0, 20)
     plt.show()
 
-def plot_pressure_scan(df, chi=None, radii=None, plot_uncal=True, plot_cal=False, plot_bestFit=False, idx=None):
+
+def plot_efield_scan(df, chi=None, radii=None, plot_uncal=True, plot_cal=False, plot_bestFitWeighted=False, plot_bestFitUnweighted=False, idx=None, show_diff=False):
+    # there are five fields
+    nrows = 2
+    ncols = 3
+    nefield = len(df)
+
+    fig, axs = plt.subplots(nrows, ncols, figsize=(12,8))
+    chans = np.arange(16)
+    if idx is None:
+        idx = np.arange(15)+1 # skip channel 1
+    for ii in range(nefield):
+        irow = int(np.floor(ii/ncols))
+        icol = ii % ncols
+        label = f"{df['efield'][ii]:.0f} V/cm"
+        # choose to use channel number or channel radius
+        if radii is not None:
+            xvals = radii[:]
+        else:
+            xvals = chans[:]
+        if plot_uncal:
+            axs[irow, icol].errorbar(xvals[idx], df['rst'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='ko', label=label)
+            
+        if plot_cal: 
+            axs[irow, icol].errorbar(xvals[idx], df['rstCal'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='b.', label=label)
+            
+        if plot_bestFitWeighted:
+            if show_diff:
+                label = f"{df['diffs'][ii]:.2f}mm (weight.)"
+            else:
+                label = 'weighted'
+            axs[irow, icol].plot(xvals[idx], df['bestFit'][ii][idx], 'r:', label=label)
+            
+        if plot_bestFitUnweighted:
+            if show_diff:
+                label = f"{df['diffsNoErr'][ii]:.2f}mm (unw.)"
+            else:
+                label = 'unweighted'
+            axs[irow, icol].plot(xvals[idx], df['bestFitNoErr'][ii][idx], 'b:', label=label)
+            
+        if chi is None:
+            pass
+        else: 
+            nchi  = chi.index
+            for jj in nchi:
+                axs[irow, icol].plot(chans, chi['rst'][jj], label = jj)
+        #axs[irow, icol].set_xlim([0,20])
+        axs[irow, icol].legend()
+    plt.show()
+
+    
+def plot_pressure_scan(df, chi=None, radii=None, plot_uncal=True, plot_cal=False, plot_bestFitWeighted=False, plot_bestFitUnweighted=False, idx=None, show_diff=False):
     # df as returned by load_pressure_data() (data)
     # chi a dataframe of chisq and template parameters
     # idx = which indices to use. If None, then just skip channel one
@@ -262,8 +327,19 @@ def plot_pressure_scan(df, chi=None, radii=None, plot_uncal=True, plot_cal=False
             axs[irow, icol].errorbar(xvals[idx], df['rstCal'][ii][idx], yerr=df['rstErr'][ii][idx], fmt='b.', label=pres)
             
         #if 'bestFit' in df.columns:
-        if plot_bestFit:
-            axs[irow, icol].plot(xvals[idx], df['bestFit'][ii][idx], 'r:')
+        if plot_bestFitWeighted:
+            if show_diff:
+                label = f"{df['diffs'][ii]:.2f}mm"
+            else:
+                label = 'fit'
+            axs[irow, icol].plot(xvals[idx], df['bestFit'][ii][idx], 'r:', label=label)
+            
+        if plot_bestFitUnweighted:
+            if show_diff:
+                label = f"{df['diffsNoErr'][ii]:.2f}mm"
+            else:
+                label = 'fit'
+            axs[irow, icol].plot(xvals[idx], df['bestFitNoErr'][ii][idx], 'b:', label=label)
             
         if chi is None:
             pass
@@ -309,6 +385,50 @@ def load_pressure_data():
     dd['pres'] = pressures
     df = pd.DataFrame(dd)
     # enter the reset data into the dataframe as np arrays
+    df['rst'] = [x for x in rsts]        # resets per area
+    df['rstRaw'] = [x for x in rstsRaw]  # resets (not normalized by area)
+
+    # invent errors
+    #err = np.array([5, 0.25, 0.25, 0.25,
+    #                2, 0.25, 1, 1,
+    #                1, 1, 1, 1,
+    #                1, 1, 1, 1])
+    #
+    # FIXME: can get rid of this code (error assignment)
+    #        since errors come from separate calibration...
+    err = np.array([0.1]*16) # tiny errors...
+    #for ii in range(4,6):
+    #    err[ii] = err[ii]/10
+    errors = [err]*len(pressures)
+    df['rstErr'] = [x for x in errors]
+    
+    return df
+
+def load_efield_data():
+    # read all E-Field scan data
+    # return a single Pandas DataFrame
+    # along with errors(?)
+
+    froot = 'data/efield_scan/20230522/updatedArea/'
+    fnames = ["05_22_2023_EScan_200.csv", "05_22_2023_EScan_250.csv",
+              "05_22_2023_EScan_300.csv", "05_22_2023_EScan_350.csv",
+              "05_22_2023_EScan_400.csv"]
+    fnames = [os.path.join(froot, x) for x in fnames]
+    efields = np.array([200., 250, 300, 350, 400])
+
+    # Read in the CSV files
+    rsts = []
+    rstsRaw = []
+    for ff in fnames:
+        print(ff)
+        chans, rst, rstRaw = np.loadtxt(ff, unpack=True, delimiter=',', skiprows=1)
+        rsts.append(rst)
+        rstsRaw.append(rstRaw)
+    
+    dd = {}
+    dd['efield'] = efields
+    df = pd.DataFrame(dd)
+    # enter the reset data into the dataframe as np arrays
     df['rst'] = [x for x in rsts]
     df['rstRaw'] = [x for x in rstsRaw]
 
@@ -321,13 +441,15 @@ def load_pressure_data():
     # FIXME: can get rid of this code (error assignment)
     #        since errors come from separate calibration...
     err = np.array([0.1]*16) # tiny errors...
-    for ii in range(4,6):
-        err[ii] = err[ii]/10
-    errors = [err]*len(pressures)
+    #for ii in range(4,6):
+    #    err[ii] = err[ii]/10
+    errors = [err]*len(efields)
     df['rstErr'] = [x for x in errors]
     
     return df
-    
+
+
+
 def read_pressure_data(fname, fmt='awkward'):
     if fmt.upper()=='CSV':
         df = load_pressure_data()

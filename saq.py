@@ -43,7 +43,65 @@ midpoint = ([ 0.255,  1.090,  1.855,  2.645,   3.605,   4.605,  5.605,
               6.855,  8.335, 10.335, 14.0475, 18.9625, 23.960, 28.960,
               36.44, 46.45  ])
 
+def reset_times_of_file(infile, meta=True):
+    # input a root file and get back a list of numpy arrays of
+    # reset times. Returns a 2D array timestamps[chan][ii] where ii indexes
+    # the reset time for a given channel.
+    # each channel can have a different number of resets, so can't use a 2D numpy array
+    # could use awkward array though (variable length entries...)
+    #
+    # If meta=True, then return the metadata also (as a dictionary)
+    # e.g. data, meta = reset_times_of_file(root_filename, meta=True)
+    #
+    meta = get_metadata(infile)
+
+    # read the data from the root file
+    raw = get_raw_data(infile)
+    #print(raw)
+
+    # Get rid of data from the first UDP packet (can have leftover data from last run)
+    raw = drop_first_packet(raw)
+
+    # figure out which channels fired for each reset
+    out = resets_by_channel(raw)
+
+    time_clk = [np.array(x) for x in out] # convert to list of numpy arrays holding clock vals
+    # len(timestamps) = 16
+
+    # unwrap the timestamps and 
+    # convert timestamps from CLOCK reading to seconds
+    time_sec = []
+    for ii in range(len(time_clk)):
+        time_sec.append( convert_time(time_clk[ii], clock_rate=meta['ZYBO_FRQ'][0]) ) 
+        
+    if meta:
+        return time_sec, meta
+    else:
+        return time_sec
+
+    
 # File utility functions
+def drop_first_packet(raw_data):
+    # for some reason, the first UDP packet can hold data from
+    # a previous run, so we drop all resets that have a packet id
+    # equal to the first packet id (first pid is not 1 in general...)
+
+    # sample data for raw_data is:
+    #{
+    # 'ChMask': ndarray([8192, 0, 128, ..., 256, 128, 0], dtype=object),
+    # 'Meta': ndarray([0, 0, 0, ..., 0, 0, 0], dtype=object),
+    # 'Timestamp': ndarray([3226324414, 3226324631, ..., 1754705728], dtype=uint32),
+    # 'pid': ndarray([850, 850, 850, ..., 1092, 1092, 1092], dtype=object)
+    # }
+    
+    firstPid = raw_data['pid'][0]
+    ids = np.nonzero( raw_data['pid'] - firstPid )
+    for key in raw_data.keys():
+        raw_data[key] = raw_data[key][ids]
+
+    return raw_data
+
+        
 def get_metadata(filename, verbose=False):
     """ returns a dictionary with the meta data from a SAQ ROOT file """
     metadata = ROOT.RDataFrame("mt", filename).AsNumpy()
@@ -64,7 +122,7 @@ def resets_by_channel(data):
     """ returns the timestamp of each reset as a list of lists: resets[chan][reset_i] """
 
     # create a list of the channels and all of their resets
-    return [[t for t, mask in zip(data["Timestamp"], data["ChMask"]) if m(ch, mask)]
+    return [[t for t, mask in zip(data["Timestamp"], data["ChMask"]) if channel_made_reset(ch, mask)]
             for ch in range(N_SAQ_CHANNELS)]
 
 def unwrap_resets(resets_wrapped, counter_bits):
@@ -203,20 +261,30 @@ def files_from_list(flist):
     #print(files)
     return files
 
-def convert_time(time):
-    clock_rate = 30.3e6 #the frequency of the zybo board
+def convert_time(time, clock_rate=CLOCK_FREQ):
+    # FIXME: need to be able to handle different SAQ_DIV values (clock divider values)
+    # Convert time in clock counts to time_sec in seconds
+    # also "unwrap" the counter (just ensure that next clock reading is larger than previous)
+    
+    #clock_rate = 30.3e6 #the frequency of the zybo board
+    #clock_rate comes in as an integer
     n = 0 #number of loops through the clock
 
     time_sec = np.zeros(len(time))
     #Convert the individual entries to show the time in seconds
     for i in range(len(time)):
-        cutoff = (2**32)-1 #the value at which the zybo's clock resets back to zero
+        cutoff = (2**N_CLOCK_BITS)-1 #the value at which the zybo's clock resets back to zero
         loop_value = (cutoff)/clock_rate #the number of seconds it takes to go through one loop
-        time_sec[i] = time[i]/clock_rate + (n*loop_value) #the actual conversion 
-        #add a count to the number of loops if the time has reset and fix that value
         if (int(time[i]) - int(time[i-1])) < 0 and i !=0:
             n+=1
-            time_sec[i] = float(time[i]/clock_rate) + float(n*loop_value) #the actual conversio
+        time_sec[i] = time[i]/clock_rate + float(n*loop_value) #the actual conversion
+        
+        #add a count to the number of loops if the time has reset and fix that value
+        #time_sec[i] = time[i]/clock_rate + (n*loop_value) #the actual conversion 
+        #add a count to the number of loops if the time has reset and fix that value
+        #if (int(time[i]) - int(time[i-1])) < 0 and i !=0:
+        #    n+=1
+        #    time_sec[i] = float(time[i]/clock_rate) + float(n*loop_value) #the actual conversio
     return time_sec
 
 def calculate_rtd(resets):
